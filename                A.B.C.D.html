@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AgroSystem Pro - Linhas A-B</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+        
+        /* Ajuste para ocupar a tela inteira sem rolar */
+        body, html { 
+            height: 100%; 
+            width: 100%; 
+            background-color: #121212; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        /* O mapa agora ocupa o espaço que sobrar, respeitando os botões */
+        #map { 
+            flex: 1; 
+            width: 100%; 
+            background: #222; 
+        }
+
+        /* Painel de controle ajustado para caber tudo */
+        .controls { 
+            background: #1e1e1e; 
+            padding: 10px 15px 20px 15px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+            z-index: 1000; 
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
+        }
+
+        .row { display: flex; gap: 8px; }
+        
+        button { 
+            flex: 1; 
+            padding: 12px 5px; 
+            font-weight: bold; 
+            border: none; 
+            border-radius: 6px; 
+            color: white; 
+            cursor: pointer; 
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .btn-a { background: #e74c3c; }
+        .btn-b { background: #3498db; }
+        .btn-gps { background: #f39c12; }
+        .btn-gerar { background: #27ae60; flex: 1.2; }
+        
+        .status-bar { 
+            background: #2c3e50; 
+            padding: 6px 10px; 
+            border-radius: 4px; 
+            font-size: 11px; 
+            border-left: 4px solid #f39c12; 
+            color: #ecf0f1;
+            text-align: center;
+        }
+
+        .input-box {
+            display: flex;
+            align-items: center;
+            background: #333;
+            border-radius: 4px;
+            padding: 0 10px;
+        }
+
+        label { font-size: 10px; color: #aaa; text-align: center; display: block; }
+
+        input { 
+            background: transparent; 
+            border: none; 
+            color: white; 
+            padding: 8px; 
+            font-size: 16px; 
+            width: 100%; 
+            text-align: center;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="controls">
+    <div class="status-bar" id="status">Sinal OK. Marque os pontos ou clique em Localizar.</div>
+    
+    <div class="row">
+        <button class="btn-a" onclick="marcarPonto('A')">Marcar A</button>
+        <button class="btn-b" onclick="marcarPonto('B')">Marcar B</button>
+    </div>
+
+    <div>
+        <label>ESPAÇAMENTO ENTRE LINHAS (m)</label>
+        <div class="input-box">
+            <input type="number" id="espacamento" value="0.45" step="0.01">
+        </div>
+    </div>
+
+    <div class="row">
+        <button class="btn-gps" onclick="focarGPS()">🎯 Localizar</button>
+        <button class="btn-gerar" onclick="gerarLinhas()">🚜 Gerar Linhas</button>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    // Inicializa o mapa com zoom adequado para campo
+    var map = L.map('map', { zoomControl: false }).setView([-15.79, -47.88], 4);
+
+    // Camada Satélite Google
+    L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        maxZoom: 21,
+        attribution: 'Google Satélite'
+    }).addTo(map);
+
+    var pontoA, pontoB;
+    var camadaLinhas = L.layerGroup().addTo(map);
+    var marcadorUsuario = L.circleMarker([0,0], {radius: 7, color: '#3498db', fillOpacity: 1, weight: 2}).addTo(map);
+
+    function focarGPS() {
+        if (!navigator.geolocation) return alert("GPS não suportado.");
+        document.getElementById('status').innerText = "Atualizando posição...";
+        
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            var lat = pos.coords.latitude;
+            var lng = pos.coords.longitude;
+            marcadorUsuario.setLatLng([lat, lng]);
+            map.flyTo([lat, lng], 19); // Zoom máximo para precisão de plantio
+            document.getElementById('status').innerText = "Você está aqui!";
+        }, function(err) {
+            alert("Erro de GPS. Verifique se o HTTPS está ativo.");
+        }, { enableHighAccuracy: true });
+    }
+
+    function marcarPonto(tipo) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            var coord = [pos.coords.latitude, pos.coords.longitude];
+            if (tipo === 'A') {
+                pontoA = coord;
+                L.marker(coord).addTo(map).bindPopup("Início (A)").openPopup();
+                document.getElementById('status').innerText = "Ponto A marcado com sucesso!";
+            } else {
+                pontoB = coord;
+                L.marker(coord).addTo(map).bindPopup("Fim (B)").openPopup();
+                document.getElementById('status').innerText = "Ponto B marcado! Clique em Gerar.";
+            }
+        });
+    }
+
+    function gerarLinhas() {
+        if (!pontoA || !pontoB) return alert("Marque A e B primeiro.");
+        camadaLinhas.clearLayers();
+        
+        var esp = parseFloat(document.getElementById('espacamento').value);
+        var lat1 = pontoA[0], lon1 = pontoA[1], lat2 = pontoB[0], lon2 = pontoB[1];
+        
+        var angulo = Math.atan2(lat2 - lat1, (lon2 - lon1) * Math.cos(lat1 * Math.PI / 180));
+        var anguloPerp = angulo + Math.PI / 2;
+        
+        var offLat = (esp / 111320) * Math.sin(anguloPerp);
+        var offLon = (esp / (111320 * Math.cos(lat1 * Math.PI / 180))) * Math.cos(anguloPerp);
+
+        // Gera 40 linhas paralelas para cobrir uma área maior
+        for (var i = -40; i <= 40; i++) {
+            var nLat1 = lat1 + (offLat * i), nLon1 = lon1 + (offLon * i);
+            var nLat2 = lat2 + (offLat * i), nLon2 = lon2 + (offLon * i);
+            L.polyline([[nLat1, nLon1], [nLat2, nLon2]], {
+                color: i === 0 ? '#f1c40f' : 'white', 
+                weight: i === 0 ? 3 : 1, 
+                dashArray: i === 0 ? null : '5,5',
+                opacity: 0.7
+            }).addTo(camadaLinhas);
+        }
+        document.getElementById('status').innerText = "Linhas projetadas no campo.";
+    }
+
+    // Iniciar monitoramento automático de posição
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(function(pos) {
+            marcadorUsuario.setLatLng([pos.coords.latitude, pos.coords.longitude]);
+        }, null, { enableHighAccuracy: true });
+    }
+</script>
+</body>
+</html>
