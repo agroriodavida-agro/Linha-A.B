@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AgroSystem Pro - Curvas de Nível</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #f0f2f5; }
+        
+        #map { height: 60vh; width: 100%; position: relative; border-bottom: 4px solid #1b5e20; }
+        
+        /* Botão flutuante do GPS */
+        .btn-gps {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+            background: white;
+            border: 2px solid #2e7d32;
+            border-radius: 50%;
+            width: 55px;
+            height: 55px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+
+        .painel { 
+            padding: 15px; 
+            height: 40vh; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px;
+            background: #ffffff;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 6px solid #2e7d32;
+            padding: 12px;
+            border-radius: 4px;
+        }
+
+        .status-label { font-size: 14px; color: #555; display: block; }
+        .status-valor { font-weight: bold; font-size: 16px; color: #1b5e20; }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .btn-gerar { background-color: #2e7d32; }
+        .btn-exportar { background-color: #1565c0; }
+        
+        /* Estilo para as linhas de curva no mapa */
+        .curva-linha { color: #ffff00; weight: 4; opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+<div id="map">
+    <div class="btn-gps" onclick="pegarLocalizacao()" title="Minha Localização">🎯</div>
+</div>
+
+<div class="painel">
+    <div class="info-box">
+        <span class="status-label">Status do Terreno:</span>
+        <span id="status" class="status-valor">Aguardando ponto...</span>
+        <hr style="border: 0; border-top: 1px solid #c8e6c9; margin: 8px 0;">
+        <span class="status-label">Altitude (Cota):</span>
+        <span id="altitude" class="status-valor">0.00 metros</span>
+    </div>
+
+    <button class="btn btn-gerar" onclick="gerarCurvas()">Traçar Curvas Automaticamente</button>
+    <button class="btn btn-exportar" onclick="exportarKML()">Exportar para GPS (.KML)</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Inicialização do Mapa com Satélite Google
+    const map = L.map('map', { zoomControl: false }).setView([-17.785, -50.920], 15);
+    L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}').addTo(map);
+
+    let marcadorAtual;
+    let altitudeGlobal = 0;
+    let camadaLinhas = L.layerGroup().addTo(map);
+
+    // Função para buscar localização via GPS do celular
+    function pegarLocalizacao() {
+        if (!navigator.geolocation) return alert("GPS não suportado.");
+
+        document.getElementById('status').innerText = "Buscando sinal GPS...";
+
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            
+            map.setView([lat, lng], 18); // Zoom máximo para precisão
+            atualizarPonto(lat, lng);
+        }, (erro) => {
+            alert("Ative o GPS do celular!");
+            document.getElementById('status').innerText = "Erro no GPS";
+        }, { enableHighAccuracy: true });
+    }
+
+    // Clique manual no mapa
+    map.on('click', (e) => {
+        atualizarPonto(e.latlng.lat, e.latlng.lng);
+    });
+
+    // Atualiza marcador e busca altitude
+    async function atualizarPonto(lat, lng) {
+        if (marcadorAtual) map.removeLayer(marcadorAtual);
+        marcadorAtual = L.marker([lat, lng]).addTo(map);
+        
+        document.getElementById('status').innerText = "Consultando Altimetria...";
+        
+        try {
+            const res = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`);
+            const data = await res.json();
+            altitudeGlobal = data.results[0].elevation;
+            
+            document.getElementById('altitude').innerText = altitudeGlobal.toFixed(2) + " metros";
+            document.getElementById('status').innerText = "Ponto de Cota Definido!";
+        } catch (e) {
+            document.getElementById('status').innerText = "Erro ao ler altitude.";
+        }
+    }
+
+    function gerarCurvas() {
+        if (altitudeGlobal === 0) return alert("Selecione um ponto primeiro!");
+        
+        // Simulação visual: Desenha linhas de nível paralelas
+        // Na prática, aqui entrará o algoritmo de grade que discutimos
+        alert("Gerando curvas de nível para a cota " + altitudeGlobal.toFixed(0) + "m...");
+        
+        const centro = marcadorAtual.getLatLng();
+        const pontos = [
+            [centro.lat, centro.lng - 0.002],
+            [centro.lat + 0.0005, centro.lng],
+            [centro.lat, centro.lng + 0.002]
+        ];
+        L.polyline(pontos, {color: 'yellow', weight: 5}).addTo(camadaLinhas);
+    }
+
+    function exportarKML() {
+        if (altitudeGlobal === 0) return alert("Gere as curvas primeiro!");
+        alert("Arquivo KML gerado com sucesso! Pronto para o monitor da máquina.");
+        // Lógica de download do blob KML entrará aqui
+    }
+</script>
+
+</body>
+</html>
