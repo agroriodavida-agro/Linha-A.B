@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgroSystem Pro</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"/>
+
+<style>
+body { margin:0; font-family:Arial; }
+#map { height:60vh; }
+
+.painel {
+    padding:15px;
+    background:#f5f5f5;
+}
+
+button {
+    width:100%;
+    padding:12px;
+    margin-top:8px;
+    border:none;
+    border-radius:8px;
+    color:white;
+    font-size:15px;
+}
+
+.gps { position:absolute; top:10px; right:10px; z-index:1000; background:white; color:black; }
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<button class="gps" onclick="irParaGPS()">📍 GPS</button>
+
+<div class="painel">
+
+<b>Status:</b> <span id="status">Sem área</span><br>
+<b>Área:</b> <span id="area">0 ha</span><br><br>
+
+Intervalo curvas (m):
+<input type="number" id="intervalo" value="10" style="width:100%; padding:8px;">
+
+<button style="background:#2e7d32" onclick="gerarCurvas()">Gerar Curvas</button>
+<button style="background:#1565c0" onclick="salvarProjeto()">💾 Salvar</button>
+<button style="background:#263238" onclick="abrirGerenciador()">📋 Projetos</button>
+<button style="background:#c62828" onclick="removerProjeto()">🗑️ Remover</button>
+
+</div>
+
+<!-- MODAL -->
+<div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000000aa; z-index:2000;">
+<div style="background:white; margin:10% auto; padding:20px; width:90%; border-radius:10px; max-height:70%; overflow:auto;">
+<h3>Projetos</h3>
+<div id="lista"></div>
+<button onclick="fecharGerenciador()" style="background:#c62828">Fechar</button>
+</div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+
+<script>
+let map = L.map('map').setView([-5.0, -38.0], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+let drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
+
+let drawControl = new L.Control.Draw({
+    edit: { featureGroup: drawnItems },
+    draw: { polygon:true, rectangle:false, circle:false, marker:false }
+});
+map.addControl(drawControl);
+
+// DESENHO
+map.on(L.Draw.Event.CREATED, function(e){
+    drawnItems.clearLayers();
+    drawnItems.addLayer(e.layer);
+    calcularArea(e.layer);
+});
+
+// GPS
+function irParaGPS(){
+    navigator.geolocation.getCurrentPosition(pos=>{
+        let lat = pos.coords.latitude;
+        let lng = pos.coords.longitude;
+        map.setView([lat,lng],18);
+        L.marker([lat,lng]).addTo(map).bindPopup("Você está aqui").openPopup();
+    });
+}
+
+// ÁREA
+function calcularArea(layer){
+    let latlngs = layer.getLatLngs()[0];
+    let area = L.GeometryUtil.geodesicArea(latlngs);
+    let ha = (area/10000).toFixed(2);
+    document.getElementById("area").innerText = ha + " ha";
+    document.getElementById("status").innerText = "Área definida";
+}
+
+// CURVAS (simulado)
+function gerarCurvas(){
+    alert("Curvas geradas (simulação)");
+}
+
+// SALVAR
+function salvarProjeto(){
+    if(drawnItems.getLayers().length==0) return alert("Sem área");
+
+    let nome = prompt("Nome do projeto:");
+    if(!nome) return;
+
+    let dados=[];
+    drawnItems.eachLayer(l=>dados.push(l.toGeoJSON()));
+
+    let projetos = JSON.parse(localStorage.getItem("projetos"))||{};
+    projetos[nome]=dados;
+
+    localStorage.setItem("projetos", JSON.stringify(projetos));
+    alert("Salvo!");
+}
+
+// GERENCIADOR
+function abrirGerenciador(){
+    let lista = document.getElementById("lista");
+    lista.innerHTML="";
+
+    let projetos = JSON.parse(localStorage.getItem("projetos"))||{};
+
+    Object.keys(projetos).forEach(nome=>{
+        lista.innerHTML += `
+        <div>
+        <b>${nome}</b><br>
+        <button onclick="carregar('${nome}')">Abrir</button>
+        <button onclick="excluir('${nome}')">Excluir</button>
+        </div><hr>`;
+    });
+
+    document.getElementById("modal").style.display="block";
+}
+
+function fecharGerenciador(){
+    document.getElementById("modal").style.display="none";
+}
+
+// CARREGAR
+function carregar(nome){
+    let projetos = JSON.parse(localStorage.getItem("projetos"));
+    drawnItems.clearLayers();
+
+    let grupo=[];
+    projetos[nome].forEach(item=>{
+        let layer = L.geoJSON(item);
+        layer.eachLayer(l=>{
+            drawnItems.addLayer(l);
+            grupo.push(l);
+        });
+    });
+
+    map.fitBounds(new L.featureGroup(grupo).getBounds());
+    fecharGerenciador();
+}
+
+// EXCLUIR
+function excluir(nome){
+    if(!confirm("Excluir "+nome+"?")) return;
+
+    let projetos = JSON.parse(localStorage.getItem("projetos"));
+    delete projetos[nome];
+
+    localStorage.setItem("projetos", JSON.stringify(projetos));
+    abrirGerenciador();
+}
+
+// REMOVER ATUAL
+function removerProjeto(){
+    if(!confirm("Remover área atual?")) return;
+    drawnItems.clearLayers();
+    document.getElementById("status").innerText="Sem área";
+    document.getElementById("area").innerText="0 ha";
+}
+
+// CREDITOS
+console.log("Desenvolvido por João Divino Barbosa");
+</script>
+
+</body>
+</html>
