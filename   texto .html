@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Agro na Palma da Mão - Clima</title>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#07111a">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&family=DM+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+  :root {
+    --bg: #07111a;
+    --panel: #0d1f2d;
+    --panel2: #0a1925;
+    --border: rgba(100,180,255,0.12);
+    --accent: #f5a623;
+    --accent2: #3ad8ff;
+    --text: #e8f4ff;
+    --muted: #6a93b0;
+    --rain: #5bc8ff;
+    --green: #3dffa0;
+    --red: #ff5c5c;
+    --radius: 20px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing: antialiased; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    padding: 18px 16px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 1000;
+  }
+  .header-brand h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.2rem;
+    color: #fff;
+  }
+  .badge-sat {
+    background: var(--accent);
+    color: #1a0e00;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 40px;
+    text-transform: uppercase;
+  }
+
+  /* LOCATION BAR */
+  .location-bar {
+    margin: 10px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .loc-dot {
+    width: 10px; height: 10px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+
+  /* CURRENT WEATHER CARD */
+  .current-card {
+    margin: 8px 16px;
+    background: linear-gradient(135deg, #0d2035 0%, #0f2840 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .current-temp {
+    font-family: 'Syne', sans-serif;
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  /* RADAR MAP */
+  .radar-section {
+    margin: 8px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  #radarMap { width: 100%; height: 250px; background: #000; }
+
+  /* TABS */
+  .tabs-wrap { margin: 12px 16px; display: flex; gap: 8px; }
+  .tab-btn {
+    flex: 1; padding: 12px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--muted);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tab-btn.active { background: var(--accent); color: #000; }
+
+  /* PREVISOES */
+  .hourly-wrap { display: flex; gap: 10px; overflow-x: auto; padding: 10px 16px; scrollbar-width: none; }
+  .hour-card {
+    min-width: 80px; background: var(--panel); 
+    border-radius: 16px; padding: 12px; text-align: center; border: 1px solid var(--border);
+  }
+  .daily-wrap { padding: 0 16px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .day-card {
+    display: grid; grid-template-columns: 1fr auto auto auto;
+    align-items: center; padding: 14px; background: var(--panel); border-radius: 16px; gap: 12px;
+  }
+
+  .hidden { display: none !important; }
+  .btn-refresh { background: none; border: 1px solid var(--accent); color: var(--accent); padding: 6px 12px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-brand">
+    <h1>Agro na Palma da Mão</h1>
+    <span class="badge-sat">📡 Radar ao Vivo</span>
+  </div>
+  <button class="btn-refresh" onclick="load()">🔄 Atualizar</button>
+</div>
+
+<div class="location-bar">
+  <div class="loc-dot"></div>
+  <div style="flex:1">
+    <div id="locText" style="font-weight:600; font-size:0.9rem">Buscando...</div>
+    <div id="locCoords" style="font-family:'DM Mono'; font-size:0.7rem; color:var(--muted)"></div>
+  </div>
+</div>
+
+<div class="current-card">
+  <div>
+    <div class="current-temp" id="curTemp">--°</div>
+    <div id="curDesc" style="text-transform: capitalize; color:var(--muted)">--</div>
+    <div style="margin-top:10px; display:flex; gap:10px">
+      <span style="font-size:0.8rem">💧 <span id="curHum">--</span>%</span>
+      <span style="font-size:0.8rem">💨 <span id="curWind">--</span> km/h</span>
+    </div>
+  </div>
+  <div style="text-align:right">
+    <div id="curIcon" style="font-size:3rem">⏳</div>
+    <div style="font-size:0.75rem; color:var(--rain)">☔ <span id="curRain">0.0</span> mm</div>
+  </div>
+</div>
+
+<div class="radar-section">
+  <div style="padding:10px; font-size:0.75rem; color:var(--accent2); font-weight:bold">MAPA DE PRECIPITAÇÃO (GO/MA)</div>
+  <div id="radarMap"></div>
+</div>
+
+<div class="tabs-wrap">
+  <button class="tab-btn active" onclick="switchTab('hourly', this)">Próximas Horas</button>
+  <button class="tab-btn" onclick="switchTab('daily', this)">7 Dias</button>
+</div>
+
+<div id="panelHourly" class="hourly-wrap"></div>
+<div id="panelDaily" class="daily-wrap hidden"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let map = null;
+let radarLayer = null;
+
+const WMO = {
+  0:'☀️ Céu Limpo', 1:'🌤️ Poucas Nuvens', 2:'⛅ Parcialmente', 3:'☁️ Nublado',
+  45:'🌫️ Neblina', 61:'🌧️ Chuva Leve', 63:'🌧️ Chuva', 65:'🌧️ Chuva Forte',
+  80:'🌦️ Pancadas', 81:'🌧️ Pancadas', 82:'⛈️ Tempestade', 95:'⛈️ Trovoada'
+};
+
+async function load() {
+  navigator.geolocation.getCurrentPosition(async (p) => {
+    const { latitude: lat, longitude: lon } = p.coords;
+    document.getElementById('locCoords').textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+    
+    // Reverse Geocoding
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+      .then(r => r.json()).then(d => {
+        document.getElementById('locText').textContent = d.address.city || d.address.town || "Local Rural";
+      });
+
+    // Weather Data
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&hourly=temperature_2m,weather_code,precipitation,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`);
+    const data = await res.json();
+    
+    render(data);
+    initMap(lat, lon);
+  }, () => alert("Ative o GPS para os dados agrícolas precisos."));
+}
+
+function render(data) {
+  const c = data.current;
+  document.getElementById('curTemp').textContent = `${Math.round(c.temperature_2m)}°`;
+  document.getElementById('curDesc').textContent = WMO[c.weather_code] || 'Estável';
+  document.getElementById('curHum').textContent = c.relative_humidity_2m;
+  document.getElementById('curWind').textContent = c.wind_speed_10m;
+  document.getElementById('curRain').textContent = c.precipitation;
+  document.getElementById('curIcon').textContent = (WMO[c.weather_code] || '☀️').split(' ')[0];
+
+  // Hourly
+  let hHtml = '';
+  for(let i=0; i<24; i++) {
+    hHtml += `<div class="hour-card">
+      <div style="font-size:0.7rem; color:var(--muted)">${i}:00</div>
+      <div style="font-size:1.2rem; margin:5px 0">${(WMO[data.hourly.weather_code[i]] || '☀️').split(' ')[0]}</div>
+      <div style="font-weight:bold">${Math.round(data.hourly.temperature_2m[i])}°</div>
+      <div style="font-size:0.6rem; color:var(--rain)">${data.hourly.precipitation_probability[i]}%</div>
+    </div>`;
+  }
+  document.getElementById('panelHourly').innerHTML = hHtml;
+
+  // Daily
+  let dHtml = '';
+  data.daily.time.forEach((t, i) => {
+    const date = new Date(t + 'T12:00:00');
+    dHtml += `<div class="day-card">
+      <div style="font-size:0.8rem; font-weight:bold">${date.toLocaleDateString('pt-BR', {weekday:'short'})}</div>
+      <div style="font-size:1.2rem">${(WMO[data.daily.weather_code[i]] || '☀️').split(' ')[0]}</div>
+      <div style="font-size:0.85rem">${Math.round(data.daily.temperature_2m_max[i])}° <small style="color:var(--muted)">${Math.round(data.daily.temperature_2m_min[i])}°</small></div>
+      <div style="font-size:0.7rem; color:var(--rain); font-family:'DM Mono'">💧${data.daily.precipitation_sum[i]}mm</div>
+    </div>`;
+  });
+  document.getElementById('panelDaily').innerHTML = dHtml;
+}
+
+function initMap(lat, lon) {
+  if (!map) {
+    map = L.map('radarMap', { zoomControl: false }).setView([lat, lon], 8);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+  } else {
+    map.setView([lat, lon], 8);
+  }
+  
+  L.circleMarker([lat, lon], { radius: 6, color: '#f5a623', fillOpacity: 1 }).addTo(map);
+  loadRadar();
+}
+
+async function loadRadar() {
+  const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+  const d = await r.json();
+  const last = d.radar.past[d.radar.past.length - 1];
+  if (radarLayer) map.removeLayer(radarLayer);
+  radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${last.path}/256/{z}/{x}/{y}/2/1_1.png`, { opacity: 0.6 }).addTo(map);
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panelHourly').classList.toggle('hidden', tab !== 'hourly');
+  document.getElementById('panelDaily').classList.toggle('hidden', tab !== 'daily');
+  if(map) setTimeout(() => map.invalidateSize(), 200);
+}
+
+load();
+</script>
+</body>
+</html>
