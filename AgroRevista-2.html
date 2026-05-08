@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0c0e08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>AgroRevista</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Libre+Baskerville:ital@0;1&family=Bebas+Neue&family=DM+Mono&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --ink: #0c0e08;
+  --ink2: #1a1f12;
+  --ink3: #252d18;
+  --paper: #f5f0e8;
+  --paper2: #ede7d5;
+  --paper3: #e2dac6;
+  --gold: #c8941a;
+  --gold2: #e8b030;
+  --gold-light: rgba(200,148,26,0.15);
+  --green-field: #2d5a1b;
+  --green-light: #4a8a2a;
+  --cream: #faf7f0;
+  --text-dark: #1a1a10;
+  --text-mid: #4a4a35;
+  --text-light: #7a7a60;
+  --red-accent: #8b2020;
+  --radius: 4px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+  background: var(--ink);
+  font-family: 'Libre Baskerville', Georgia, serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ── SPLASH ── */
+#splash {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--ink);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px;
+}
+.splash-rule { width: 80px; height: 1px; background: var(--gold); margin: 12px auto; }
+.splash-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 52px; font-weight: 900;
+  color: var(--paper);
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.splash-title span { color: var(--gold); }
+.splash-sub {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px; letter-spacing: 6px;
+  color: var(--text-light);
+}
+.splash-loader {
+  width: 100px; height: 1px;
+  background: var(--ink3);
+  margin-top: 24px;
+  position: relative; overflow: hidden;
+}
+.splash-loader::after {
+  content: '';
+  position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+  background: var(--gold);
+  animation: load 2s ease forwards;
+}
+@keyframes load { to { left: 0; } }
+
+/* ── APP SHELL ── */
+#app { display: none; min-height: 100vh; background: var(--ink); }
+
+/* ── TOP BAR ── */
+.topbar {
+  background: var(--ink);
+  border-bottom: 1px solid var(--ink3);
+  padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; font-weight: 900;
+  color: var(--paper);
+  letter-spacing: -0.5px;
+}
+.topbar-logo span { color: var(--gold); }
+.topbar-actions { display: flex; gap: 8px; }
+.tbar-btn {
+  padding: 8px 14px;
+  border-radius: 3px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px; letter-spacing: 1.5px;
+  cursor: pointer; border: none;
+  transition: all 0.2s;
+}
+.tbar-btn.primary { background: var(--gold); color: var(--ink); }
+.tbar-btn.primary:hover { background: var(--gold2); }
+.tbar-btn.ghost { background: transparent; color: var(--paper); border: 1px solid var(--ink3); }
+.tbar-btn.ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── MAIN MODES ── */
+.mode { display: none; }
+.mode.active { display: block; }
+
+/* ══════════════════════════════════════
+   EDITOR MODE
+══════════════════════════════════════ */
+#editor {
+  padding: 16px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* Cover setup */
+.cover-setup {
+  background: var(--ink2);
+  border: 1px solid var(--ink3);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.setup-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px; letter-spacing: 3px;
+  color: var(--gold);
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.setup-title::after { content: ''; flex:1; height:1px; background: var(--ink3); }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-row.single { grid-template-columns: 1fr; }
+.fgroup { display: flex; flex-direction: column; gap: 5px; }
+.fgroup label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11px; letter-spacing: 2px;
+  color: var(--text-light);
+}
+.fgroup input, .fgroup select, .fgroup textarea {
+  background: var(--ink3);
+  border: 1px solid #2a3020;
+  border-radius: 3px;
+  color: var(--paper);
+  padding: 9px 12px;
+  font-family: 'Libre Baskerville', serif;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.fgroup input:focus, .fgroup select:focus, .fgroup textarea:focus {
+  border-color: var(--gold);
+}
+.fgroup select option { background: var(--ink2); }
+.fgroup textarea { resize: vertical; min-height: 70px; }
+
+/* Photo upload area */
+.upload-area {
+  border: 2px dashed var(--ink3);
+  border-radius: 8px;
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 16px;
+  background: var(--ink2);
+}
+.upload-area:hover, .upload-area.drag { border-color: var(--gold); background: var(--gold-light); }
+.upload-icon { font-size: 36px; margin-bottom: 10px; }
+.upload-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; color: var(--paper);
+  margin-bottom: 6px;
+}
+.upload-sub { font-size: 12px; color: var(--text-light); }
+#fileInput { display: none; }
+
+/* Photo cards */
+.photos-section { margin-bottom: 16px; }
+.photos-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.photos-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px; letter-spacing: 3px;
+  color: var(--gold);
+}
+.photo-count {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--text-light);
+}
+
+.photo-card {
+  background: var(--ink2);
+  border: 1px solid var(--ink3);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+.photo-img-wrap { position: relative; }
+.photo-img-wrap img {
+  width: 100%; height: 200px;
+  object-fit: cover; display: block;
+}
+.photo-num {
+  position: absolute; top: 10px; left: 10px;
+  background: var(--ink);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px; letter-spacing: 2px;
+  padding: 3px 9px; border-radius: 3px;
+}
+.photo-del {
+  position: absolute; top: 10px; right: 10px;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff; font-size: 16px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.photo-del:hover { background: rgba(139,32,32,0.8); }
+
+.photo-body { padding: 14px; }
+.ai-status {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11px; letter-spacing: 2px;
+  color: var(--text-light); margin-bottom: 12px;
+}
+.ai-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--gold);
+  animation: blink 1s infinite;
+}
+.ai-dot.done { background: var(--green-light); animation: none; }
+.ai-dot.error { background: var(--red-accent); animation: none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.photo-fields { display: flex; flex-direction: column; gap: 8px; }
+.field-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--text-light); margin-bottom: 3px;
+}
+.photo-fields input, .photo-fields textarea, .photo-fields select {
+  background: var(--ink3);
+  border: 1px solid #2a3020;
+  border-radius: 3px;
+  color: var(--paper);
+  padding: 8px 10px;
+  font-family: 'Libre Baskerville', serif;
+  font-size: 12px;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+  resize: none;
+}
+.photo-fields input:focus, .photo-fields textarea:focus, .photo-fields select:focus { border-color: var(--gold); }
+
+.layout-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11px; letter-spacing: 1px;
+  cursor: pointer;
+  border: 1px solid var(--ink3);
+  color: var(--text-light);
+  transition: all 0.2s;
+}
+.chip.active { background: var(--gold-light); border-color: var(--gold); color: var(--gold); }
+
+.generate-btn {
+  width: 100%;
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  padding: 16px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px; letter-spacing: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+.generate-btn:hover { background: var(--gold2); transform: translateY(-1px); }
+.generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ══════════════════════════════════════
+   REVISTA MODE
+══════════════════════════════════════ */
+#revista {
+  background: var(--ink);
+  min-height: 100vh;
+}
+
+/* Cover page */
+.page-cover {
+  position: relative;
+  width: 100%; min-height: 100vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.cover-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+}
+.cover-bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(12,14,8,0.3) 0%,
+    rgba(12,14,8,0.1) 30%,
+    rgba(12,14,8,0.6) 65%,
+    rgba(12,14,8,0.95) 100%
+  );
+}
+.cover-bg.no-photo {
+  background: linear-gradient(160deg, var(--green-field) 0%, var(--ink) 60%);
+}
+.cover-bg.no-photo::after { display: none; }
+
+.cover-masthead {
+  position: relative; z-index: 2;
+  padding: 20px 20px 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.masthead-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11px; letter-spacing: 5px;
+  color: rgba(245,240,232,0.7);
+  text-transform: uppercase;
+}
+.masthead-edition {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; color: rgba(245,240,232,0.5);
+}
+.cover-rule {
+  position: relative; z-index: 2;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold), transparent);
+  margin: 10px 20px;
+}
+
+.cover-content {
+  position: relative; z-index: 2;
+  margin-top: auto;
+  padding: 0 20px 32px;
+}
+.cover-eyebrow {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11px; letter-spacing: 5px;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.cover-headline {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(38px, 10vw, 64px);
+  font-weight: 900;
+  color: var(--paper);
+  line-height: 0.95;
+  letter-spacing: -1px;
+  margin-bottom: 16px;
+}
+.cover-headline em { color: var(--gold); font-style: italic; }
+.cover-meta {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.cover-meta-item {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.cover-meta-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 9px; letter-spacing: 3px;
+  color: rgba(245,240,232,0.5);
+}
+.cover-meta-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px; color: var(--paper);
+}
+.cover-divider {
+  height: 1px;
+  background: rgba(245,240,232,0.2);
+  margin-bottom: 16px;
+}
+.cover-intro {
+  font-size: 13px;
+  color: rgba(245,240,232,0.75);
+  line-height: 1.7;
+  max-width: 500px;
+}
+
+/* Scroll hint */
+.scroll-hint {
+  position: relative; z-index: 2;
+  text-align: center;
+  padding: 0 0 24px;
+  animation: bounce 2s ease-in-out infinite;
+}
+.scroll-hint span {
+  font-size: 22px;
+  color: rgba(245,240,232,0.4);
+}
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
+
+/* Article pages */
+.article-pages {
+  background: var(--paper);
+}
+
+/* Layout: Full bleed */
+.page-full {
+  position: relative;
+}
+.page-full .art-photo {
+  width: 100%; height: 70vw; max-height: 480px;
+  object-fit: cover; display: block;
+}
+.page-full .art-body {
+  padding: 28px 20px;
+  background: var(--paper);
+}
+
+/* Layout: Sidebar */
+.page-sidebar {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+@media(min-width:600px) {
+  .page-sidebar { grid-template-columns: 1fr 1fr; min-height: 400px; }
+  .page-sidebar .art-photo { height: 100%; max-height: none; }
+}
+.page-sidebar .art-photo {
+  width: 100%; height: 55vw; max-height: 340px;
+  object-fit: cover; display: block;
+}
+.page-sidebar .art-body {
+  padding: 28px 20px;
+  background: var(--paper);
+  display: flex; flex-direction: column; justify-content: center;
+}
+
+/* Layout: Feature (tall) */
+.page-feature .art-photo {
+  width: 100%; height: 85vw; max-height: 560px;
+  object-fit: cover; display: block;
+}
+.page-feature .art-body {
+  padding: 28px 20px;
+  background: var(--ink);
+  margin-top: -2px;
+}
+.page-feature .art-body .art-headline { color: var(--paper); }
+.page-feature .art-body .art-text { color: rgba(245,240,232,0.75); }
+.page-feature .art-body .art-tag { color: var(--gold); border-color: var(--gold); }
+.page-feature .art-body .art-meta { color: rgba(245,240,232,0.4); }
+
+/* Layout: Grid (2 fotos) */
+.page-grid .art-grid-photos {
+  display: grid; grid-template-columns: 1fr 1fr;
+}
+.page-grid .art-grid-photos img {
+  width: 100%; height: 45vw; max-height: 280px;
+  object-fit: cover; display: block;
+}
+.page-grid .art-body {
+  padding: 24px 20px;
+  background: var(--paper2);
+}
+
+/* Article body typography */
+.art-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11px; letter-spacing: 4px;
+  color: var(--text-light);
+  margin-bottom: 10px;
+}
+.art-tag {
+  display: inline-block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px; letter-spacing: 3px;
+  color: var(--green-field);
+  border: 1px solid var(--green-field);
+  padding: 2px 8px; border-radius: 2px;
+  margin-bottom: 10px;
+}
+.art-headline {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(22px, 6vw, 36px);
+  font-weight: 900; line-height: 1.1;
+  color: var(--text-dark);
+  margin-bottom: 10px;
+  letter-spacing: -0.5px;
+}
+.art-headline em { font-style: italic; color: var(--green-field); }
+.art-rule {
+  width: 40px; height: 2px;
+  background: var(--gold);
+  margin-bottom: 14px;
+}
+.art-text {
+  font-size: 14px;
+  color: var(--text-mid);
+  line-height: 1.8;
+  margin-bottom: 14px;
+}
+.art-text strong { color: var(--text-dark); font-weight: 700; }
+.art-meta {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; color: var(--text-light);
+  margin-top: 10px;
+}
+.art-meta span { display: flex; align-items: center; gap: 4px; }
+
+/* Pull quote */
+.pull-quote {
+  border-left: 3px solid var(--gold);
+  padding: 12px 16px;
+  margin: 16px 0;
+  background: var(--paper2);
+}
+.pull-quote p {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 16px;
+  color: var(--text-dark);
+  line-height: 1.6;
+}
+
+/* Page separator */
+.page-sep {
+  display: flex; align-items: center;
+  padding: 0 20px;
+  background: var(--paper2);
+  height: 40px;
+  border-top: 1px solid var(--paper3);
+  border-bottom: 1px solid var(--paper3);
+}
+.page-sep-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px; letter-spacing: 3px;
+  color: var(--text-light);
+  margin-right: auto;
+}
+.page-sep-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px; letter-spacing: 3px;
+  color: var(--text-light);
+}
+
+/* Back cover */
+.back-cover {
+  background: var(--ink);
+  padding: 40px 20px;
+  text-align: center;
+}
+.back-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px; font-weight: 900;
+  color: var(--paper); margin-bottom: 4px;
+}
+.back-logo span { color: var(--gold); }
+.back-rule { width: 60px; height: 1px; background: var(--gold); margin: 16px auto; }
+.back-text { font-size: 12px; color: var(--text-light); line-height: 1.8; }
+.back-credit {
+  margin-top: 20px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11px; letter-spacing: 3px;
+  color: var(--gold);
+  opacity: 0.7;
+}
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--gold); color: var(--ink);
+  padding: 11px 22px; border-radius: 3px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px; letter-spacing: 2px;
+  z-index: 9999; transition: transform 0.3s ease;
+  pointer-events: none; white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.error { background: var(--red-accent); color: white; }
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 8000;
+  background: rgba(12,14,8,0.92);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+.loading-overlay.show { display: flex; }
+.loading-spinner {
+  width: 48px; height: 48px;
+  border: 2px solid var(--ink3);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-text {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 18px;
+  color: var(--paper);
+}
+.loading-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--text-light);
+}
+
+/* no-photos empty */
+.no-photos {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-light);
+}
+.no-photos .np-icon { font-size: 48px; margin-bottom: 12px; }
+.no-photos .np-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; color: var(--paper);
+  margin-bottom: 8px;
+}
+.no-photos .np-text { font-size: 13px; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-rule"></div>
+  <div class="splash-title">Agro<span>Revista</span></div>
+  <div class="splash-sub">Sua lavoura em uma revista</div>
+  <div class="splash-rule"></div>
+  <div class="splash-loader"></div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Analisando com IA...</div>
+  <div class="loading-sub" id="loadingMsg">Por favor aguarde</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-logo">Agro<span>Revista</span></div>
+    <div class="topbar-actions">
+      <button class="tbar-btn ghost" id="btnEdit" onclick="showMode('editor')" style="display:none">✏️ Editar</button>
+      <button class="tbar-btn ghost" id="btnPDF" onclick="exportarPDF()" style="display:none">⬇️ PDF</button>
+      <button class="tbar-btn primary" id="btnRevista" onclick="gerarRevista()">📖 Gerar Revista</button>
+    </div>
+  </div>
+
+  <!-- EDITOR MODE -->
+  <div class="mode active" id="editor">
+    <div id="editorInner" style="padding:16px;max-width:700px;margin:0 auto;">
+
+      <!-- Cover Setup -->
+      <div class="cover-setup">
+        <div class="setup-title">CAPA DA REVISTA</div>
+        <div class="form-row">
+          <div class="fgroup">
+            <label>NOME DA FAZENDA</label>
+            <input type="text" id="nomeFazenda" placeholder="Ex: Fazenda Santa Rosa" value="">
+          </div>
+          <div class="fgroup">
+            <label>SAFRA</label>
+            <input type="text" id="safra" placeholder="Ex: 2024/2025" value="">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="fgroup">
+            <label>CULTURA</label>
+            <select id="cultura">
+              <option value="Soja">🌱 Soja</option>
+              <option value="Milho">🌽 Milho</option>
+              <option value="Algodão">🌿 Algodão</option>
+              <option value="Café">☕ Café</option>
+              <option value="Cana-de-açúcar">🎋 Cana-de-açúcar</option>
+              <option value="Trigo">🌾 Trigo</option>
+              <option value="Feijão">🫘 Feijão</option>
+              <option value="Arroz">🌾 Arroz</option>
+              <option value="Pastagem">🐄 Pastagem</option>
+              <option value="Outra">Outra</option>
+            </select>
+          </div>
+          <div class="fgroup">
+            <label>ÁREA (ha)</label>
+            <input type="text" id="areaHa" placeholder="Ex: 850 ha">
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="fgroup">
+            <label>DATA / PERÍODO</label>
+            <input type="text" id="dataPeriodo" placeholder="Ex: Maio 2025">
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="fgroup">
+            <label>INTRODUÇÃO DA REVISTA (opcional)</label>
+            <textarea id="introRevista" placeholder="Breve apresentação da visita técnica, objetivos, condições gerais..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload Area -->
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📷</div>
+        <div class="upload-text">Adicionar fotos da lavoura</div>
+        <div class="upload-sub">Toque para selecionar · Máx. 10 fotos</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" multiple>
+
+      <!-- Photos -->
+      <div class="photos-section" id="photosSection">
+        <div class="photos-header">
+          <div class="photos-title">FOTOS ADICIONADAS</div>
+          <div class="photo-count" id="photoCount">0 fotos</div>
+        </div>
+        <div id="photoList">
+          <div class="no-photos">
+            <div class="np-icon">🌾</div>
+            <div class="np-title">Nenhuma foto ainda</div>
+            <div class="np-text">Adicione fotos da lavoura acima.<br>A IA irá analisar cada uma automaticamente.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- REVISTA MODE -->
+  <div class="mode" id="revista">
+    <div id="revistaContent"></div>
+  </div>
+
+</div>
+
+<script>
+// ── STATE ──
+const state = {
+  photos: [],       // { id, file, dataUrl, titulo, texto, tag, layout, aiDone }
+  nextId: 1,
+  analyzing: false
+};
+
+// ── SPLASH ──
+setTimeout(() => {
+  document.getElementById('splash').style.opacity = '0';
+  setTimeout(() => {
+    document.getElementById('splash').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+  }, 500);
+}, 2200);
+
+// ── FILE INPUT ──
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  const allowed = 10 - state.photos.length;
+  if (allowed <= 0) { showToast('Máximo de 10 fotos atingido', true); return; }
+  const toAdd = files.slice(0, allowed);
+  for (const f of toAdd) await addPhoto(f);
+  e.target.value = '';
+});
+
+// Drag & drop
+const ua = document.getElementById('uploadArea');
+ua.addEventListener('dragover', e => { e.preventDefault(); ua.classList.add('drag'); });
+ua.addEventListener('dragleave', () => ua.classList.remove('drag'));
+ua.addEventListener('drop', async e => {
+  e.preventDefault(); ua.classList.remove('drag');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  for (const f of files.slice(0, 10 - state.photos.length)) await addPhoto(f);
+});
+
+// ── ADD PHOTO ──
+async function addPhoto(file) {
+  const id = state.nextId++;
+  const dataUrl = await readFile(file);
+  const photo = {
+    id, file, dataUrl,
+    titulo: '', texto: '', tag: 'Lavoura',
+    layout: 'full', aiDone: false, aiError: false
+  };
+  state.photos.push(photo);
+  renderPhotoCard(photo);
+  updateCount();
+  analyzePhoto(photo);
+}
+
+function readFile(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Falha ao ler arquivo'));
+    r.readAsDataURL(file);
+  });
+}
+
+// ── RENDER PHOTO CARD ──
+function renderPhotoCard(photo) {
+  // Remove empty state
+  const list = document.getElementById('photoList');
+  const empty = list.querySelector('.no-photos');
+  if (empty) empty.remove();
+
+  const layouts = ['full','sidebar','feature','grid'];
+  const layoutLabels = { full:'Full Bleed', sidebar:'Lateral', feature:'Destaque', grid:'Grade' };
+  const tags = ['Lavoura','Solo','Pragas','Doenças','Florescimento','Colheita','Irrigação','Equipamento','Panorâmica','Outra'];
+
+  const card = document.createElement('div');
+  card.className = 'photo-card';
+  card.id = `card-${photo.id}`;
+  card.innerHTML = `
+    <div class="photo-img-wrap">
+      <img src="${photo.dataUrl}" alt="Foto ${photo.id}" loading="lazy">
+      <div class="photo-num">FOTO ${photo.id}</div>
+      <button class="photo-del" onclick="removePhoto(${photo.id})" title="Remover">✕</button>
+    </div>
+    <div class="photo-body">
+      <div class="ai-status">
+        <div class="ai-dot" id="dot-${photo.id}"></div>
+        <span id="aiLabel-${photo.id}">IA ANALISANDO...</span>
+      </div>
+      <div class="photo-fields">
+        <div>
+          <div class="field-label">TÍTULO DA FOTO</div>
+          <input type="text" id="titulo-${photo.id}" placeholder="Título sugerido pela IA...">
+        </div>
+        <div>
+          <div class="field-label">TEXTO / LEGENDA</div>
+          <textarea id="texto-${photo.id}" rows="3" placeholder="Análise agronômica da IA..."></textarea>
+        </div>
+        <div>
+          <div class="field-label">CATEGORIA</div>
+          <select id="tag-${photo.id}" onchange="updateField(${photo.id},'tag',this.value)">
+            ${tags.map(t => `<option value="${t}" ${t===photo.tag?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div class="field-label">LAYOUT DA PÁGINA</div>
+          <div class="layout-chips">
+            ${layouts.map(l => `<div class="chip ${l===photo.layout?'active':''}" onclick="setLayout(${photo.id},'${l}',this)">${layoutLabels[l]}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  list.appendChild(card);
+
+  // Bind inputs
+  card.querySelector(`#titulo-${photo.id}`).addEventListener('input', e => { photo.titulo = e.target.value; });
+  card.querySelector(`#texto-${photo.id}`).addEventListener('input', e => { photo.texto = e.target.value; });
+}
+
+function setLayout(id, layout, el) {
+  const photo = state.photos.find(p => p.id === id);
+  if (!photo) return;
+  photo.layout = layout;
+  const chips = el.parentElement.querySelectorAll('.chip');
+  chips.forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function updateField(id, field, val) {
+  const photo = state.photos.find(p => p.id === id);
+  if (photo) photo[field] = val;
+}
+
+function removePhoto(id) {
+  state.photos = state.photos.filter(p => p.id !== id);
+  const card = document.getElementById(`card-${id}`);
+  if (card) card.remove();
+  updateCount();
+  if (state.photos.length === 0) {
+    document.getElementById('photoList').innerHTML = `
+      <div class="no-photos">
+        <div class="np-icon">🌾</div>
+        <div class="np-title">Nenhuma foto ainda</div>
+        <div class="np-text">Adicione fotos da lavoura acima.<br>A IA irá analisar cada uma automaticamente.</div>
+      </div>`;
+  }
+}
+
+function updateCount() {
+  document.getElementById('photoCount').textContent = `${state.photos.length} foto${state.photos.length !== 1 ? 's' : ''}`;
+}
+
+// ── ANALYZE PHOTO WITH AI ──
+async function analyzePhoto(photo) {
+  const dot = document.getElementById(`dot-${photo.id}`);
+  const label = document.getElementById(`aiLabel-${photo.id}`);
+  const cultura = document.getElementById('cultura').value;
+
+  try {
+    const base64 = photo.dataUrl.split(',')[1];
+    const mediaType = photo.file.type || 'image/jpeg';
+
+    const prompt = `Você é um engenheiro agrônomo especialista. Analise esta foto de lavoura e forneça:
+1. Um TÍTULO jornalístico e impactante (máx. 8 palavras) para uma revista agrícola
+2. Um TEXTO de análise agronômica (2-3 frases, ~80 palavras) descrevendo o que você observa: estágio fenológico, condições da cultura, aspectos relevantes, recomendações
+3. Uma CATEGORIA entre: Lavoura, Solo, Pragas, Doenças, Florescimento, Colheita, Irrigação, Equipamento, Panorâmica, Outra
+
+Cultura provável: ${cultura}
+
+Responda SOMENTE em JSON válido, sem markdown:
+{"titulo":"...","texto":"...","categoria":"..."}`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) throw new Error(`API error ${response.status}`);
+    const data = await response.json();
+    const raw = data.content[0]?.text || '{}';
+    const cleaned = raw.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(cleaned);
+
+    photo.titulo = result.titulo || 'Análise de Lavoura';
+    photo.texto = result.texto || '';
+    if (result.categoria) photo.tag = result.categoria;
+
+    // Update UI
+    const tituloEl = document.getElementById(`titulo-${photo.id}`);
+    const textoEl = document.getElementById(`texto-${photo.id}`);
+    const tagEl = document.getElementById(`tag-${photo.id}`);
+    if (tituloEl) tituloEl.value = photo.titulo;
+    if (textoEl) textoEl.value = photo.texto;
+    if (tagEl) tagEl.value = photo.tag;
+
+    photo.aiDone = true;
+    if (dot) dot.className = 'ai-dot done';
+    if (label) label.textContent = 'IA CONCLUÍDO ✓';
+
+  } catch (err) {
+    console.error('AI error:', err);
+    photo.aiError = true;
+    photo.titulo = `Foto ${photo.id} — Análise da Lavoura`;
+    photo.texto = 'Edite este campo com suas observações sobre a foto.';
+    const tituloEl = document.getElementById(`titulo-${photo.id}`);
+    const textoEl = document.getElementById(`texto-${photo.id}`);
+    if (tituloEl) tituloEl.value = photo.titulo;
+    if (textoEl) textoEl.value = photo.texto;
+    if (dot) dot.className = 'ai-dot error';
+    if (label) label.textContent = 'EDITE MANUALMENTE';
+  }
+}
+
+// ── GERAR REVISTA ──
+async function gerarRevista() {
+  if (state.photos.length === 0) {
+    showToast('Adicione pelo menos 1 foto!', true); return;
+  }
+
+  // Collect current field values
+  state.photos.forEach(p => {
+    const t = document.getElementById(`titulo-${p.id}`);
+    const tx = document.getElementById(`texto-${p.id}`);
+    const tg = document.getElementById(`tag-${p.id}`);
+    if (t) p.titulo = t.value || p.titulo;
+    if (tx) p.texto = tx.value || p.texto;
+    if (tg) p.tag = tg.value || p.tag;
+  });
+
+  const nomeFazenda = document.getElementById('nomeFazenda').value || 'Fazenda';
+  const safra = document.getElementById('safra').value || new Date().getFullYear();
+  const cultura = document.getElementById('cultura').value;
+  const areaHa = document.getElementById('areaHa').value;
+  const responsavel = '';
+  const dataPeriodo = document.getElementById('dataPeriodo').value || formatDate();
+  const intro = document.getElementById('introRevista').value;
+
+  const coverPhoto = state.photos[0];
+
+  let html = '';
+
+  // ── CAPA ──
+  html += `<div class="page-cover">
+    <div class="cover-bg ${coverPhoto ? '' : 'no-photo'}" ${coverPhoto ? `style="background-image:url('${coverPhoto.dataUrl}')"` : ''}></div>
+    <div class="cover-masthead">
+      <div class="masthead-name">AgroRevista · Edição Especial</div>
+      <div class="masthead-edition">${dataPeriodo}</div>
+    </div>
+    <div class="cover-rule"></div>
+    <div style="flex:1"></div>
+    <div class="cover-content">
+      <div class="cover-eyebrow">RELATÓRIO FOTOGRÁFICO DE CAMPO</div>
+      <div class="cover-headline">${nomeFazenda.split(' ').map((w,i) => i===0 ? w : `<em>${w}</em>`).join(' ')}</div>
+      <div class="cover-meta">
+        <div class="cover-meta-item">
+          <div class="cover-meta-label">CULTURA</div>
+          <div class="cover-meta-value">${cultura}</div>
+        </div>
+        ${safra ? `<div class="cover-meta-item">
+          <div class="cover-meta-label">SAFRA</div>
+          <div class="cover-meta-value">${safra}</div>
+        </div>` : ''}
+        ${areaHa ? `<div class="cover-meta-item">
+          <div class="cover-meta-label">ÁREA</div>
+          <div class="cover-meta-value">${areaHa}</div>
+        </div>` : ''}
+        ${responsavel ? `<div class="cover-meta-item">
+          <div class="cover-meta-label">RESPONSÁVEL</div>
+          <div class="cover-meta-value">${responsavel}</div>
+        </div>` : ''}
+      </div>
+      ${intro ? `<div class="cover-divider"></div><div class="cover-intro">${intro}</div>` : ''}
+    </div>
+    <div class="scroll-hint"><span>↓</span></div>
+  </div>`;
+
+  // ── PÁGINAS DAS FOTOS ──
+  html += `<div class="article-pages">`;
+
+  state.photos.forEach((photo, idx) => {
+    const pageNum = idx + 1;
+    const titulo = photo.titulo || `Análise ${pageNum}`;
+    const texto = photo.texto || '';
+    const tag = photo.tag || 'Lavoura';
+    const layout = photo.layout || 'full';
+
+    // Page separator
+    html += `<div class="page-sep">
+      <div class="page-sep-num">PÁG. ${String(pageNum).padStart(2,'0')}</div>
+      <div class="page-sep-title">${nomeFazenda.toUpperCase()} · ${cultura.toUpperCase()}</div>
+    </div>`;
+
+    if (layout === 'full') {
+      html += `<div class="page-full">
+        <img class="art-photo" src="${photo.dataUrl}" alt="${titulo}" loading="lazy">
+        <div class="art-body">
+          <div class="art-num">FOTO ${String(pageNum).padStart(2,'0')} / ${String(state.photos.length).padStart(2,'0')}</div>
+          <div class="art-tag">${tag.toUpperCase()}</div>
+          <div class="art-headline">${titulo}</div>
+          <div class="art-rule"></div>
+          <div class="art-text">${formatTexto(texto)}</div>
+          <div class="art-meta">
+            <span>📅 ${dataPeriodo}</span>
+            ${cultura ? `<span>🌱 ${cultura}</span>` : ''}
+            ${safra ? `<span>📋 Safra ${safra}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+
+    } else if (layout === 'sidebar') {
+      const flip = idx % 2 === 1;
+      html += `<div class="page-sidebar" style="${flip ? 'direction:rtl' : ''}">
+        <img class="art-photo" src="${photo.dataUrl}" alt="${titulo}" loading="lazy" style="${flip ? 'direction:ltr' : ''}">
+        <div class="art-body" style="${flip ? 'direction:ltr' : ''}">
+          <div class="art-num">FOTO ${String(pageNum).padStart(2,'0')}</div>
+          <div class="art-tag">${tag.toUpperCase()}</div>
+          <div class="art-headline">${titulo}</div>
+          <div class="art-rule"></div>
+          <div class="art-text">${formatTexto(texto)}</div>
+          <div class="art-meta">
+            <span>📅 ${dataPeriodo}</span>
+            ${cultura ? `<span>🌱 ${cultura}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+
+    } else if (layout === 'feature') {
+      html += `<div class="page-feature">
+        <img class="art-photo" src="${photo.dataUrl}" alt="${titulo}" loading="lazy">
+        <div class="art-body">
+          <div class="art-num" style="color:rgba(245,240,232,0.4)">FOTO ${String(pageNum).padStart(2,'0')} / ${String(state.photos.length).padStart(2,'0')}</div>
+          <div class="art-tag">${tag.toUpperCase()}</div>
+          <div class="art-headline">${titulo}</div>
+          <div class="art-rule"></div>
+          ${texto.length > 60 ? `<div class="pull-quote" style="background:rgba(255,255,255,0.05);border-color:var(--gold)"><p style="color:var(--paper)">"${texto.substring(0,100)}${texto.length>100?'...':''}"</p></div>` : ''}
+          <div class="art-text">${formatTexto(texto)}</div>
+          <div class="art-meta">
+            <span>📅 ${dataPeriodo}</span>
+            ${cultura ? `<span>🌱 ${cultura}</span>` : ''}
+            ${safra ? `<span>📋 Safra ${safra}</span>` : ''}
+            ${responsavel ? `<span>👤 ${responsavel}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+
+    } else if (layout === 'grid') {
+      const next = state.photos[idx + 1];
+      if (next) {
+        // Skip next photo (will be paired)
+        next._paired = true;
+        html += `<div class="page-grid">
+          <div class="art-grid-photos">
+            <img src="${photo.dataUrl}" alt="${titulo}" loading="lazy">
+            <img src="${next.dataUrl}" alt="${next.titulo}" loading="lazy">
+          </div>
+          <div class="art-body">
+            <div class="art-num">FOTOS ${String(pageNum).padStart(2,'0')}–${String(pageNum+1).padStart(2,'0')}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div>
+                <div class="art-tag">${tag.toUpperCase()}</div>
+                <div class="art-headline" style="font-size:18px">${titulo}</div>
+                <div class="art-text" style="font-size:12px">${texto.substring(0,120)}${texto.length>120?'...':''}</div>
+              </div>
+              <div>
+                <div class="art-tag">${(next.tag||'Lavoura').toUpperCase()}</div>
+                <div class="art-headline" style="font-size:18px">${next.titulo}</div>
+                <div class="art-text" style="font-size:12px">${(next.texto||'').substring(0,120)}${(next.texto||'').length>120?'...':''}</div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      } else {
+        // Single with grid layout, fallback to full
+        html += `<div class="page-full">
+          <img class="art-photo" src="${photo.dataUrl}" alt="${titulo}" loading="lazy">
+          <div class="art-body">
+            <div class="art-num">FOTO ${String(pageNum).padStart(2,'0')}</div>
+            <div class="art-tag">${tag.toUpperCase()}</div>
+            <div class="art-headline">${titulo}</div>
+            <div class="art-rule"></div>
+            <div class="art-text">${formatTexto(texto)}</div>
+          </div>
+        </div>`;
+      }
+    }
+  });
+
+  // ── BACK COVER ──
+  html += `</div>
+  <div class="back-cover">
+    <div class="back-logo">Agro<span>Revista</span></div>
+    <div class="back-rule"></div>
+    <div class="back-text">
+      ${nomeFazenda} · ${cultura} · Safra ${safra}<br>
+      ${state.photos.length} registros fotográficos<br>
+      ${dataPeriodo}
+    </div>
+    <div class="back-credit">Desenvolvido por João Divino Barbosa</div>
+  </div>`;
+
+  document.getElementById('revistaContent').innerHTML = html;
+
+  // Clean up paired markers
+  state.photos.forEach(p => delete p._paired);
+
+  showMode('revista');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  showToast('Revista gerada com sucesso!');
+}
+
+function formatTexto(texto) {
+  if (!texto) return '';
+  // Bold any agronomic keywords
+  return texto
+    .replace(/\b(estágio|fenológico|florescimento|colheita|pragas|doenças|solo|irrigação|produtividade|soja|milho|algodão|trigo|café|cana)\b/gi,
+      '<strong>$1</strong>');
+}
+
+function formatDate() {
+  return new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
+// ── MODE SWITCH ──
+function showMode(mode) {
+  document.getElementById('editor').classList.toggle('active', mode === 'editor');
+  document.getElementById('revista').classList.toggle('active', mode === 'revista');
+  document.getElementById('btnEdit').style.display = mode === 'revista' ? 'inline-flex' : 'none';
+  document.getElementById('btnPDF').style.display = mode === 'revista' ? 'inline-flex' : 'none';
+  document.getElementById('btnRevista').textContent = mode === 'revista' ? '🔄 Reatualizar' : '📖 Gerar Revista';
+}
+
+// ── EXPORTAR PDF ──
+async function exportarPDF() {
+  const btnPDF = document.getElementById('btnPDF');
+  const overlay = document.getElementById('loadingOverlay');
+  const loadingMsg = document.getElementById('loadingMsg');
+
+  btnPDF.disabled = true;
+  overlay.classList.add('show');
+  loadingMsg.textContent = 'Preparando PDF...';
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const PW = 210, PH = 297; // A4 mm
+    const SCALE = 1.5;
+    let primeiraPagina = true;
+
+    // Função auxiliar: captura um elemento e adiciona ao PDF
+    async function capturarElemento(el, bgColor) {
+      const canvas = await html2canvas(el, {
+        scale: SCALE,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: bgColor || '#f5f0e8',
+        logging: false,
+        imageTimeout: 15000,
+        removeContainer: true
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.88);
+      const larguraPx = canvas.width;
+      const alturaPx = canvas.height;
+      // Altura proporcional em mm
+      const alturaEl = (alturaPx * PW) / larguraPx;
+      const totalPags = Math.ceil(alturaEl / PH);
+
+      for (let i = 0; i < totalPags; i++) {
+        if (!primeiraPagina) pdf.addPage();
+        primeiraPagina = false;
+        const yOff = -(i * PH);
+        pdf.addImage(imgData, 'JPEG', 0, yOff, PW, alturaEl);
+      }
+    }
+
+    // 1. Capa — substituir background-image CSS por <img> temporário para compatibilidade
+    const coverEl = document.querySelector('.page-cover');
+    const coverBg = coverEl ? coverEl.querySelector('.cover-bg') : null;
+    let coverBgStyle = '';
+    if (coverBg) {
+      coverBgStyle = coverBg.style.backgroundImage;
+      // Converter background-image em <img> absoluto para o html2canvas capturar
+      if (coverBgStyle && state.photos.length > 0) {
+        const tempImg = document.createElement('img');
+        tempImg.src = state.photos[0].dataUrl;
+        tempImg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;';
+        tempImg.id = '__tempCoverImg__';
+        coverBg.style.backgroundImage = 'none';
+        coverBg.appendChild(tempImg);
+      }
+    }
+
+    if (coverEl) {
+      loadingMsg.textContent = 'Capturando capa...';
+      await capturarElemento(coverEl, '#0c0e08');
+    }
+
+    // Remover img temporária
+    const tempImg = document.getElementById('__tempCoverImg__');
+    if (tempImg) tempImg.remove();
+    if (coverBg && coverBgStyle) coverBg.style.backgroundImage = coverBgStyle;
+
+    // 2. Páginas das fotos — capturar cada bloco (sep + página) individualmente
+    const articlePages = document.querySelector('.article-pages');
+    if (articlePages) {
+      const blocos = articlePages.children;
+      let i = 0;
+      while (i < blocos.length) {
+        const bloco = blocos[i];
+        loadingMsg.textContent = `Capturando foto ${Math.floor(i/2)+1}...`;
+
+        // Juntar sep + página num único canvas temporário
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + window.innerWidth + 'px;background:#f5f0e8;';
+        const clone1 = bloco.cloneNode(true);
+        wrapper.appendChild(clone1);
+        if (blocos[i+1]) {
+          const clone2 = blocos[i+1].cloneNode(true);
+          // Substituir background-image por img em clones feature
+          clone2.querySelectorAll('[style*="background-image"]').forEach(el => {
+            el.style.backgroundImage = 'none';
+          });
+          wrapper.appendChild(clone2);
+          i += 2;
+        } else {
+          i++;
+        }
+        document.body.appendChild(wrapper);
+
+        // Substituir src de imgs no clone com dataUrl original
+        const imgs = wrapper.querySelectorAll('img');
+        imgs.forEach(img => {
+          const src = img.src || img.getAttribute('src');
+          if (src && src.startsWith('blob:')) {
+            const photoMatch = state.photos.find(p => p.dataUrl && img.alt && img.alt === p.titulo);
+            if (photoMatch) img.src = photoMatch.dataUrl;
+          }
+        });
+
+        await capturarElemento(wrapper, '#f5f0e8');
+        document.body.removeChild(wrapper);
+      }
+    }
+
+    // 3. Back cover
+    const backCover = document.querySelector('.back-cover');
+    if (backCover) {
+      loadingMsg.textContent = 'Finalizando contracapa...';
+      await capturarElemento(backCover, '#0c0e08');
+    }
+
+    // Salvar
+    const nomeFazenda = document.getElementById('nomeFazenda').value || 'AgroRevista';
+    const safra = document.getElementById('safra').value || new Date().getFullYear();
+    pdf.save(`AgroRevista_${nomeFazenda}_${safra}.pdf`.replace(/\s+/g, '_'));
+    showToast('PDF exportado com sucesso!');
+
+  } catch (err) {
+    console.error('Erro PDF:', err);
+    showToast('Erro ao gerar PDF: ' + err.message, true);
+  } finally {
+    overlay.classList.remove('show');
+    btnPDF.disabled = false;
+  }
+}
+
+// ── TOAST ──
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast${isError ? ' error' : ''} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
