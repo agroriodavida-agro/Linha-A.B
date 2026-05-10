@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Agro na Palma da Mão</title>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         PWA — MANIFEST EMBUTIDO via Blob (arquivo único)
+    ═══════════════════════════════════════════════════════════ -->
+    <script>
+    (function() {
+        // ── ÍCONE SVG base64 (192x192 e 512x512 usam o mesmo SVG escalável) ──
+        const iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+          <rect width="512" height="512" rx="96" fill="#0d1a0c"/>
+          <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+          <defs>
+            <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#162015"/>
+              <stop offset="100%" stop-color="#0a110a"/>
+            </linearGradient>
+          </defs>
+          <!-- espiga central -->
+          <ellipse cx="256" cy="180" rx="28" ry="80" fill="#c8941a" opacity="0.9"/>
+          <ellipse cx="220" cy="210" rx="22" ry="60" fill="#c8941a" opacity="0.7" transform="rotate(-18 220 210)"/>
+          <ellipse cx="292" cy="210" rx="22" ry="60" fill="#c8941a" opacity="0.7" transform="rotate(18 292 210)"/>
+          <ellipse cx="190" cy="250" rx="18" ry="50" fill="#a8720f" opacity="0.5" transform="rotate(-32 190 250)"/>
+          <ellipse cx="322" cy="250" rx="18" ry="50" fill="#a8720f" opacity="0.5" transform="rotate(32 322 250)"/>
+          <!-- caule -->
+          <rect x="249" y="260" width="14" height="120" rx="7" fill="#4caf50" opacity="0.8"/>
+          <!-- folha -->
+          <ellipse cx="230" cy="310" rx="40" ry="14" fill="#4caf50" opacity="0.7" transform="rotate(-25 230 310)"/>
+          <ellipse cx="282" cy="330" rx="40" ry="14" fill="#3a9140" opacity="0.7" transform="rotate(25 282 330)"/>
+          <!-- texto AGRO -->
+          <text x="256" y="430" font-family="Arial Black, sans-serif" font-size="62" font-weight="900"
+                fill="#c8941a" text-anchor="middle" letter-spacing="2">AGRO</text>
+          <!-- linha dourada -->
+          <line x1="80" y1="450" x2="432" y2="450" stroke="#c8941a" stroke-width="3" opacity="0.4"/>
+        </svg>`;
+
+        const iconBlob = new Blob([iconSVG], {type: 'image/svg+xml'});
+        const iconURL  = URL.createObjectURL(iconBlob);
+
+        // ── MANIFEST ──
+        const manifest = {
+            name: 'Agro na Palma da Mão',
+            short_name: 'AgroPalma',
+            description: 'Registro técnico de campo em HD com compartilhamento WhatsApp',
+            start_url: './',
+            display: 'standalone',
+            background_color: '#0a110a',
+            theme_color: '#0a110a',
+            orientation: 'portrait-primary',
+            lang: 'pt-BR',
+            icons: [
+                { src: iconURL, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
+                { src: iconURL, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+            ],
+            categories: ['productivity', 'utilities'],
+            screenshots: []
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
+        const manifestURL  = URL.createObjectURL(manifestBlob);
+
+        const linkManifest = document.createElement('link');
+        linkManifest.rel  = 'manifest';
+        linkManifest.href = manifestURL;
+        document.head.appendChild(linkManifest);
+
+        // apple-touch-icon
+        const linkApple = document.createElement('link');
+        linkApple.rel  = 'apple-touch-icon';
+        linkApple.href = iconURL;
+        document.head.appendChild(linkApple);
+
+        // theme-color meta
+        const metaTheme = document.createElement('meta');
+        metaTheme.name    = 'theme-color';
+        metaTheme.content = '#0a110a';
+        document.head.appendChild(metaTheme);
+
+        // apple meta
+        const metaApple = document.createElement('meta');
+        metaApple.name    = 'apple-mobile-web-app-capable';
+        metaApple.content = 'yes';
+        document.head.appendChild(metaApple);
+
+        const metaAppleStatus = document.createElement('meta');
+        metaAppleStatus.name    = 'apple-mobile-web-app-status-bar-style';
+        metaAppleStatus.content = 'black-translucent';
+        document.head.appendChild(metaAppleStatus);
+
+        const metaAppleTitle = document.createElement('meta');
+        metaAppleTitle.name    = 'apple-mobile-web-app-title';
+        metaAppleTitle.content = 'AgroPalma';
+        document.head.appendChild(metaAppleTitle);
+    })();
+    </script>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SERVICE WORKER EMBUTIDO via Blob
+    ═══════════════════════════════════════════════════════════ -->
+    <script>
+    (function() {
+        if (!('serviceWorker' in navigator)) return;
+
+        const swCode = `
+const CACHE = 'agropalma-v2';
+const FONTES = [
+    'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap'
+];
+
+self.addEventListener('install', e => {
+    self.skipWaiting();
+    // Pre-cachear fontes ao instalar
+    e.waitUntil(
+        caches.open(CACHE).then(cache => cache.addAll(FONTES).catch(() => {}))
+    );
+});
+
+self.addEventListener('activate', e => {
+    e.waitUntil(
+        caches.keys().then(keys =>
+            Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+        ).then(() => self.clients.claim())
+    );
+});
+
+self.addEventListener('fetch', e => {
+    const url = e.request.url;
+
+    // Ignorar chrome-extension e blob
+    if (!url.startsWith('http')) return;
+
+    // Cache-first para fontes Google
+    if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
+        e.respondWith(
+            caches.open(CACHE).then(cache =>
+                cache.match(e.request).then(cached => {
+                    if (cached) return cached;
+                    return fetch(e.request).then(resp => {
+                        cache.put(e.request, resp.clone());
+                        return resp;
+                    }).catch(() => cached || new Response('', {status: 503}));
+                })
+            )
+        );
+        return;
+    }
+
+    // Cache-first para navegação (o próprio HTML) — habilita uso offline
+    if (e.request.mode === 'navigate' || e.request.destination === 'document') {
+        e.respondWith(
+            fetch(e.request).then(resp => {
+                const clone = resp.clone();
+                caches.open(CACHE).then(cache => cache.put(e.request, clone));
+                return resp;
+            }).catch(() => caches.match(e.request).then(c => c || caches.match('/')))
+        );
+        return;
+    }
+
+    // Network-first para o restante
+    e.respondWith(
+        fetch(e.request).catch(() => caches.match(e.request))
+    );
+});
+`;
+        const swBlob = new Blob([swCode], {type: 'application/javascript'});
+        const swURL  = URL.createObjectURL(swBlob);
+
+        navigator.serviceWorker.register(swURL, {scope: './'})
+            .then(reg => console.log('[SW] Registrado:', reg.scope))
+            .catch(err => console.warn('[SW] Erro:', err));
+    })();
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg:        #0a110a;
+            --panel:     #111a10;
+            --panel2:    #162015;
+            --border:    #2a3d28;
+            --gold:      #c8941a;
+            --gold2:     #e8b030;
+            --green:     #4caf50;
+            --green2:    #6fcf73;
+            --text:      #e8ede6;
+            --muted:     #6b806a;
+            --danger:    #e05555;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Barlow', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 0 0 40px 0;
+            /* iOS safe area */
+            padding-bottom: calc(40px + env(safe-area-inset-bottom));
+        }
+
+        /* ── HEADER ── */
+        .app-header {
+            background: linear-gradient(180deg, #0d1f0c 0%, #0a110a 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 20px 12px;
+            padding-top: calc(16px + env(safe-area-inset-top));
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-icon {
+            width: 40px; height: 40px;
+            background: var(--gold);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            box-shadow: 0 2px 10px rgba(200,148,26,0.4);
+        }
+        .header-title {
+            font-family: 'Bebas Neue';
+            font-size: 1.55rem;
+            letter-spacing: 2px;
+            color: var(--gold);
+            line-height: 1;
+        }
+        .header-sub {
+            font-size: 0.68rem;
+            color: var(--muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        /* ── INSTALL BANNER ── */
+        #installBanner {
+            display: none;
+            background: linear-gradient(135deg, rgba(200,148,26,0.12), rgba(200,148,26,0.06));
+            border: 1px solid rgba(200,148,26,0.35);
+            border-radius: 12px;
+            padding: 14px 16px;
+            align-items: center;
+            gap: 12px;
+            margin: 14px 14px 0;
+        }
+        #installBanner.show { display: flex; }
+        .install-icon { font-size: 1.6rem; flex-shrink: 0; }
+        .install-text { flex: 1; }
+        .install-text strong { font-size: 0.82rem; color: var(--gold2); display: block; margin-bottom: 2px; }
+        .install-text span { font-size: 0.72rem; color: var(--muted); }
+        .btn-install {
+            background: var(--gold);
+            color: #0a110a;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-family: 'Bebas Neue';
+            font-size: 1rem;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .btn-install-close {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 4px;
+            flex-shrink: 0;
+        }
+
+        /* ── MAIN CONTENT ── */
+        .main {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 18px 14px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--gold), transparent);
+        }
+
+        .card-title {
+            font-family: 'Barlow Condensed';
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .card-title .step-badge {
+            width: 20px; height: 20px;
+            background: var(--gold);
+            color: var(--bg);
+            border-radius: 50%;
+            font-size: 0.65rem;
+            font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* ── PHOTO ZONE ── */
+        .photo-zone {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.25s;
+            background: #0d150c;
+        }
+        .photo-zone:hover { border-color: var(--gold); }
+        .photo-zone.has-image { border-style: solid; border-color: var(--green); }
+
+        .photo-zone input[type="file"] {
+            position: absolute; inset: 0;
+            opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+        .photo-zone img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            position: absolute; inset: 0;
+            display: none;
+        }
+        .photo-placeholder {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 8px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .photo-placeholder .cam-icon {
+            width: 52px; height: 52px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            color: var(--muted);
+            background: var(--panel2);
+        }
+        .photo-placeholder span {
+            font-size: 0.78rem;
+            color: var(--muted);
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+        .photo-placeholder .tap-hint {
+            font-size: 0.7rem;
+            color: var(--gold);
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .photo-overlay-badge {
+            position: absolute;
+            bottom: 10px; right: 10px;
+            background: rgba(0,0,0,0.75);
+            border: 1px solid var(--green);
+            color: var(--green2);
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 4px 9px;
+            border-radius: 20px;
+            display: none;
+            z-index: 2;
+            pointer-events: none;
+        }
+        .photo-zone.has-image .photo-overlay-badge { display: block; }
+        .photo-zone.has-image .photo-placeholder { display: none; }
+        .photo-zone.has-image img { display: block; }
+
+        /* ── FORM INPUTS ── */
+        .form-row { margin-bottom: 12px; }
+        .form-row:last-child { margin-bottom: 0; }
+
+        .form-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        input[type="text"], textarea, select {
+            width: 100%;
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: 'Barlow', sans-serif;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            -webkit-appearance: none;
+        }
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(200,148,26,0.1);
+        }
+        textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
+        select option { background: var(--panel2); }
+
+        /* ── GRID 2-COL ── */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* ── CHIPS (cultura) ── */
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+        .chip {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.5px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .chip.active {
+            background: rgba(200,148,26,0.15);
+            border-color: var(--gold);
+            color: var(--gold2);
+        }
+
+        /* ── STATUS CLIMA ── */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            gap: 8px;
+        }
+        .status-box {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 8px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .status-box .sb-label {
+            font-size: 0.62rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+        .status-box .sb-emoji { font-size: 1.3rem; }
+        .status-box.active { border-color: var(--gold); background: rgba(200,148,26,0.12); }
+
+        /* ── AVALIAÇÃO ── */
+        .star-row { display: flex; gap: 8px; }
+        .star-btn {
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+            transition: transform 0.15s;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .star-btn:active { transform: scale(1.3); }
+        .star-btn.active { filter: drop-shadow(0 0 6px rgba(200,148,26,0.8)); }
+
+        /* ── TOGGLE SWITCH ── */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+        .toggle-label {
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+        .toggle-sub {
+            font-size: 0.7rem;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+        .toggle {
+            width: 44px; height: 24px;
+            background: var(--border);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.25s;
+        }
+        .toggle.on { background: var(--green); }
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 18px; height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 3px; left: 3px;
+            transition: left 0.25s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
+        .toggle.on::after { left: 23px; }
+
+        /* ── DIVIDER ── */
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 14px 0;
+        }
+
+        /* ── MAIN BUTTON ── */
+        .btn-gerar {
+            background: linear-gradient(135deg, var(--gold) 0%, #a8720f 100%);
+            color: #0a110a;
+            border: none;
+            width: 100%;
+            padding: 19px;
+            font-family: 'Bebas Neue';
+            font-size: 1.6rem;
+            letter-spacing: 3px;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(200,148,26,0.35);
+            transition: transform 0.15s, box-shadow 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-gerar:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 10px rgba(200,148,26,0.2);
+        }
+        .btn-gerar:disabled {
+            background: #2a3a28;
+            color: var(--muted);
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* ── PROGRESS ── */
+        .progress-wrap {
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .progress-wrap.show { display: flex; }
+        .progress-bar-bg {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--green), var(--gold));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        .progress-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            text-align: center;
+            font-size: 0.65rem;
+            color: var(--muted);
+            padding-top: 8px;
+            letter-spacing: 1px;
+        }
+
+        /* ── DIAS APÓS PLANTIO ── */
+        .dias-card {
+            background: linear-gradient(135deg, rgba(200,148,26,0.12), rgba(200,148,26,0.05));
+            border: 1px solid rgba(200,148,26,0.4);
+            border-radius: 12px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .dias-numero {
+            font-family: 'Bebas Neue';
+            font-size: 2.8rem;
+            color: var(--gold2);
+            line-height: 1;
+            min-width: 64px;
+            text-align: center;
+        }
+        .dias-label {
+            font-family: 'Barlow Condensed';
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--gold);
+            text-transform: uppercase;
+        }
+        .dias-sub {
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        canvas { display: none; }
+
+        /* ── BOTÃO CÂMERA ── */
+        .btn-camera {
+            width: 100%;
+            margin-top: 10px;
+            background: var(--panel2);
+            border: 1px solid var(--green);
+            color: var(--green2);
+            padding: 13px;
+            font-family: 'Bebas Neue';
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .btn-camera:active { background: rgba(76,175,80,0.15); }
+
+        /* ── SHARE ROW ── */
+        .share-row {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-wpp {
+            flex: 1;
+            background: #25D366;
+            color: #fff;
+            border: none;
+            padding: 17px 14px;
+            font-family: 'Bebas Neue';
+            font-size: 1.25rem;
+            letter-spacing: 2px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            box-shadow: 0 4px 18px rgba(37,211,102,0.3);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn-wpp:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(37,211,102,0.15); }
+        .btn-salvar-de-novo {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 17px 16px;
+            border-radius: 12px;
+            font-family: 'Bebas Neue';
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .btn-salvar-de-novo:hover { border-color: var(--gold); color: var(--gold); }
+
+        /* ── TOAST ── */
+        .toast {
+            position: fixed;
+            bottom: 24px; left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: var(--panel);
+            border: 1px solid var(--green);
+            color: var(--green2);
+            padding: 12px 22px;
+            border-radius: 30px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+            z-index: 999;
+            white-space: nowrap;
+            bottom: calc(24px + env(safe-area-inset-bottom));
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.error { border-color: var(--danger); color: var(--danger); }
+    </style>
+</head>
+<body>
+
+<!-- ── BANNER DE INSTALAÇÃO PWA ── -->
+<div id="installBanner">
+    <div class="install-icon">📲</div>
+    <div class="install-text">
+        <strong>INSTALAR APP</strong>
+        <span>Use offline, acesso rápido pela tela inicial</span>
+    </div>
+    <button class="btn-install" id="btnInstall">INSTALAR</button>
+    <button class="btn-install-close" id="btnInstallClose">✕</button>
+</div>
+
+<header class="app-header">
+    <div class="header-icon">🌾</div>
+    <div>
+        <div class="header-title">AGRO NA PALMA DA MÃO</div>
+        <div class="header-sub">Registro técnico de campo · HD</div>
+    </div>
+</header>
+
+<div class="main">
+
+    <!-- CARD 1: FOTO -->
+    <div class="card">
+        <div class="card-title">
+            <span class="step-badge">1</span>
+            Foto do Campo
+        </div>
+
+        <div class="photo-zone" id="photoZone">
+            <input type="file" id="fotoInput" accept="image/*">
+            <img id="imgPreview" alt="Preview">
+            <div class="photo-placeholder">
+                <div class="cam-icon">📷</div>
+                <span>Toque para selecionar da galeria<br>ou use o botão câmera abaixo</span>
+                <span class="tap-hint">Galeria</span>
+            </div>
+            <div class="photo-overlay-badge">✓ FOTO CARREGADA</div>
+        </div>
+
+        <!-- Botão câmera dedicado -->
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
+        <button class="btn-camera" id="btnCamera" onclick="document.getElementById('cameraInput').click()">
+            📸 ABRIR CÂMERA
+        </button>
+    </div>
+
+    <!-- CARD 2: IDENTIFICAÇÃO -->
+    <div class="card">
+        <div class="card-title">
+            <span class="step-badge">2</span>
+            Identificação
+        </div>
+
+        <div class="form-row">
+            <label class="form-label">Fazenda / Propriedade</label>
+            <input type="text" id="fazenda" placeholder="Ex: Fazenda Rio da Vida">
+        </div>
+
+        <div class="grid-2">
+            <div class="form-row">
+                <label class="form-label">Talhão / Setor</label>
+                <input type="text" id="talhao" placeholder="Ex: Talhão 03-A">
+            </div>
+            <div class="form-row">
+                <label class="form-label">Área (ha)</label>
+                <input type="text" id="area" placeholder="Ex: 45,5 ha" inputmode="decimal">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label class="form-label">Cultura</label>
+            <div class="chips" id="culturaChips">
+                <div class="chip active" data-val="MILHO">🌽 Milho</div>
+                <div class="chip" data-val="SOJA">🫘 Soja</div>
+                <div class="chip" data-val="CANA">🌿 Cana</div>
+                <div class="chip" data-val="ALGODÃO">🤍 Algodão</div>
+                <div class="chip" data-val="CAFÉ">☕ Café</div>
+                <div class="chip" data-val="TRIGO">🌾 Trigo</div>
+                <div class="chip" data-val="PASTAGEM">🐄 Pastagem</div>
+                <div class="chip" data-val="OUTRO">+ Outro</div>
+            </div>
+        </div>
+
+        <div class="form-row" id="culturaOutraRow" style="display:none">
+            <label class="form-label">Especifique a cultura</label>
+            <input type="text" id="culturaOutra" placeholder="Nome da cultura">
+        </div>
+
+        <div class="grid-2">
+            <div class="form-row">
+                <label class="form-label">Responsável</label>
+                <input type="text" id="responsavel" placeholder="Nome do técnico">
+            </div>
+            <div class="form-row">
+                <label class="form-label">Data / Hora</label>
+                <input type="text" id="dataHora" readonly>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="form-row">
+            <label class="form-label">📅 Data do Plantio</label>
+            <input type="date" id="dataPlantio" onchange="calcularDias()">
+        </div>
+
+        <!-- Badge de dias -->
+        <div id="diasBadge" style="display:none; margin-top:10px;">
+            <div class="dias-card">
+                <div class="dias-numero" id="diasNumero">0</div>
+                <div class="dias-label">DIAS APÓS O PLANTIO</div>
+                <div class="dias-sub" id="diasSub"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CARD 3: CONDIÇÕES -->
+    <div class="card">
+        <div class="card-title">
+            <span class="step-badge">3</span>
+            Condições no Campo
+        </div>
+
+        <div class="form-row">
+            <label class="form-label">Condição Climática</label>
+            <div class="status-grid" id="climaGrid">
+                <div class="status-box chip-clima active" data-val="☀️ SOL PLENO">
+                    <div class="sb-emoji">☀️</div>
+                    <div class="sb-label">Sol Pleno</div>
+                </div>
+                <div class="status-box chip-clima" data-val="⛅ PARCIAL">
+                    <div class="sb-emoji">⛅</div>
+                    <div class="sb-label">Parcial</div>
+                </div>
+                <div class="status-box chip-clima" data-val="☁️ NUBLADO">
+                    <div class="sb-emoji">☁️</div>
+                    <div class="sb-label">Nublado</div>
+                </div>
+                <div class="status-box chip-clima" data-val="🌧️ CHUVA">
+                    <div class="sb-emoji">🌧️</div>
+                    <div class="sb-label">Chuva</div>
+                </div>
+                <div class="status-box chip-clima" data-val="💨 VENTOSO">
+                    <div class="sb-emoji">💨</div>
+                    <div class="sb-label">Ventoso</div>
+                </div>
+                <div class="status-box chip-clima" data-val="🌫️ NEBLINA">
+                    <div class="sb-emoji">🌫️</div>
+                    <div class="sb-label">Neblina</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-row">
+                <label class="form-label">Estágio Fenológico</label>
+                <select id="estadio">
+                    <option value="">— Selecionar —</option>
+                    <option>Germinação / Emergência</option>
+                    <option>Vegetativo (V1–V6)</option>
+                    <option>Vegetativo (V7+)</option>
+                    <option>Florescimento / Pendão</option>
+                    <option>Enchimento de grãos</option>
+                    <option>Maturação / Colheita</option>
+                    <option>Pós-colheita</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label class="form-label">Avaliação Geral</label>
+                <div class="star-row" id="starRow">
+                    <span class="star-btn" data-n="1">☆</span>
+                    <span class="star-btn" data-n="2">☆</span>
+                    <span class="star-btn" data-n="3">☆</span>
+                    <span class="star-btn" data-n="4">☆</span>
+                    <span class="star-btn" data-n="5">☆</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CARD 4: RELATÓRIO -->
+    <div class="card">
+        <div class="card-title">
+            <span class="step-badge">4</span>
+            Relatório Técnico
+        </div>
+
+        <div class="form-row">
+            <label class="form-label">Observações de Campo</label>
+            <textarea id="texto" rows="5" placeholder="Descreva as observações técnicas: pragas identificadas, estádio da lavoura, condições de solo, ações realizadas, recomendações..."></textarea>
+        </div>
+
+        <div class="form-row">
+            <label class="form-label">Próximas Ações</label>
+            <input type="text" id="proximaAcao" placeholder="Ex: Aplicação de fungicida em 7 dias">
+        </div>
+    </div>
+
+    <!-- CARD 5: CONFIGURAÇÕES DA IMAGEM -->
+    <div class="card">
+        <div class="card-title">
+            <span class="step-badge">5</span>
+            Configurações da Imagem
+        </div>
+
+        <div class="toggle-row">
+            <div>
+                <div class="toggle-label">Mostrar Data e Hora</div>
+                <div class="toggle-sub">Carimbo de tempo na imagem</div>
+            </div>
+            <div class="toggle on" id="togData" onclick="toggleSwitch(this)"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="toggle-row">
+            <div>
+                <div class="toggle-label">Mostrar Avaliação (estrelas)</div>
+                <div class="toggle-sub">Nota da visita técnica</div>
+            </div>
+            <div class="toggle on" id="togStars" onclick="toggleSwitch(this)"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="toggle-row">
+            <div>
+                <div class="toggle-label">Rodapé com Responsável</div>
+                <div class="toggle-sub">Nome do técnico na imagem</div>
+            </div>
+            <div class="toggle on" id="togResp" onclick="toggleSwitch(this)"></div>
+        </div>
+    </div>
+
+    <!-- BOTÃO GERAR -->
+    <div>
+        <div class="progress-wrap" id="progressWrap">
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
+            <div class="progress-label" id="progressLabel">Gerando imagem...</div>
+        </div>
+    </div>
+
+    <button class="btn-gerar" id="btnGerar" onclick="processarImagem()">
+        <span>📸</span> SALVAR REGISTRO HD
+    </button>
+
+    <div class="share-row" id="shareRow" style="display:none;">
+        <button class="btn-wpp" id="btnWpp" onclick="compartilharWhatsApp()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            COMPARTILHAR NO WHATSAPP
+        </button>
+        <button class="btn-salvar-de-novo" onclick="salvarNovamente()">
+            💾 Salvar
+        </button>
+    </div>
+
+    <footer>DESENVOLVIDO POR JOÃO DIVINO BARBOSA &nbsp;·&nbsp; AGRO NA PALMA DA MÃO</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+<canvas id="canvasMestre"></canvas>
+
+<script>
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let imagemOriginal = new Image();
+let culturaAtiva = 'MILHO';
+let climaAtivo = '☀️ SOL PLENO';
+let avaliacaoStars = 0;
+let ultimaImagemBlob = null;
+let ultimaImagemURL  = null;
+let ultimaDados = null;
+
+// ── PWA INSTALL PROMPT ──
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    // Mostrar banner somente se ainda não instalou
+    if (!localStorage.getItem('pwa_install_dismissed')) {
+        document.getElementById('installBanner').classList.add('show');
+    }
+});
+
+document.getElementById('btnInstall').addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    document.getElementById('installBanner').classList.remove('show');
+    if (outcome === 'accepted') showToast('✅ App instalado com sucesso!');
+});
+
+document.getElementById('btnInstallClose').addEventListener('click', () => {
+    document.getElementById('installBanner').classList.remove('show');
+    localStorage.setItem('pwa_install_dismissed', '1');
+});
+
+window.addEventListener('appinstalled', () => {
+    document.getElementById('installBanner').classList.remove('show');
+    showToast('✅ Agro na Palma instalado!');
+});
+
+// ── DATA/HORA AUTO ──
+function atualizarDataHora() {
+    const agora = new Date();
+    const d = agora.toLocaleDateString('pt-BR');
+    const h = agora.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('dataHora').value = `${d} ${h}`;
+}
+atualizarDataHora();
+setInterval(atualizarDataHora, 30000);
+
+// ── FOTO (galeria e câmera) ──
+const fotoInput  = document.getElementById('fotoInput');
+const cameraInput = document.getElementById('cameraInput');
+const imgPreview = document.getElementById('imgPreview');
+const photoZone  = document.getElementById('photoZone');
+
+async function carregarFoto(file) {
+    if (!file) return;
+    const objectURL = URL.createObjectURL(file);
+    imagemOriginal = new Image();
+    imagemOriginal.onload = function() {
+        imgPreview.src = objectURL;
+        photoZone.classList.add('has-image');
+    };
+    imagemOriginal.onerror = function() {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            imagemOriginal = new Image();
+            imagemOriginal.onload = function() {
+                imgPreview.src = ev.target.result;
+                photoZone.classList.add('has-image');
+            };
+            imagemOriginal.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+    imagemOriginal.src = objectURL;
+}
+
+fotoInput.onchange  = async function(e) { await carregarFoto(e.target.files[0]); };
+cameraInput.onchange = async function(e) { await carregarFoto(e.target.files[0]); };
+
+// ── DATA DO PLANTIO / DIAS ──
+function calcularDias() {
+    const val = document.getElementById('dataPlantio').value;
+    const badge = document.getElementById('diasBadge');
+    if (!val) { badge.style.display = 'none'; return; }
+
+    const plantio = new Date(val + 'T00:00:00');
+    const hoje    = new Date();
+    hoje.setHours(0,0,0,0);
+    const diff = Math.floor((hoje - plantio) / (1000 * 60 * 60 * 24));
+
+    if (diff < 0) {
+        document.getElementById('diasNumero').textContent = Math.abs(diff);
+        document.getElementById('diasLabel') && (document.getElementById('diasLabel').textContent = 'DIAS ATÉ O PLANTIO');
+        document.getElementById('diasSub').textContent = 'Plantio programado para o futuro';
+    } else {
+        document.getElementById('diasNumero').textContent = diff;
+        document.getElementById('diasSub').textContent = faseGerminacao(diff);
+    }
+    badge.style.display = 'block';
+}
+
+function faseGerminacao(dias) {
+    if (dias === 0) return 'Data do plantio — dia atual';
+    if (dias <= 7)  return `🌱 Germinação / Emergência`;
+    if (dias <= 20) return `🌿 Estabelecimento inicial`;
+    if (dias <= 45) return `📈 Crescimento vegetativo`;
+    if (dias <= 80) return `🌸 Fase reprodutiva`;
+    if (dias <= 110)return `🌾 Enchimento / Maturação`;
+    return `✅ Próximo da colheita`;
+}
+
+// Atualizar dias automaticamente a cada minuto (virada de meia-noite)
+setInterval(calcularDias, 60000);
+
+
+document.querySelectorAll('#culturaChips .chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+        document.querySelectorAll('#culturaChips .chip').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        culturaAtiva = this.dataset.val;
+        document.getElementById('culturaOutraRow').style.display = culturaAtiva === 'OUTRO' ? 'block' : 'none';
+    });
+});
+
+// ── CLIMA GRID ──
+document.querySelectorAll('.chip-clima').forEach(box => {
+    box.addEventListener('click', function() {
+        document.querySelectorAll('.chip-clima').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        climaAtivo = this.dataset.val;
+    });
+});
+
+// ── STARS ──
+document.querySelectorAll('.star-btn').forEach(star => {
+    star.addEventListener('click', function() {
+        avaliacaoStars = parseInt(this.dataset.n);
+        document.querySelectorAll('.star-btn').forEach((s, i) => {
+            s.classList.toggle('active', i < avaliacaoStars);
+            s.textContent = i < avaliacaoStars ? '⭐' : '☆';
+        });
+    });
+});
+
+// ── TOGGLE ──
+function toggleSwitch(el) { el.classList.toggle('on'); }
+
+// ── TOAST ──
+function showToast(msg, type='ok') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (type === 'error' ? ' error' : '');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── PROGRESS ──
+function setProgress(pct, label) {
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = label;
+}
+
+// ── WRAP TEXT ──
+function wrapText(ctx, text, x, y, maxWidth, lineHeight, modoMedir) {
+    if (!text) return y;
+    const paragraphs = text.split('\n');
+    for (const para of paragraphs) {
+        const words = para.split(' ');
+        let line = '';
+        for (let n = 0; n < words.length; n++) {
+            const testLine = line + words[n] + ' ';
+            if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+                if (!modoMedir) ctx.fillText(line.trimEnd(), x, y);
+                line = words[n] + ' ';
+                y += lineHeight;
+            } else {
+                line = testLine;
+            }
+        }
+        if (line.trim()) {
+            if (!modoMedir) ctx.fillText(line.trimEnd(), x, y);
+        }
+        y += lineHeight;
+    }
+    return y;
+}
+
+// ── LINHA helper ──
+function linha(ctx, txt, x, y, font, cor, modoMedir) {
+    ctx.font = font;
+    if (!modoMedir) { ctx.fillStyle = cor; ctx.fillText(txt, x, y); }
+    return y;
+}
+
+// ── RENDERIZAR RODAPÉ ──
+function renderRodape(ctx, W, H, dados, modoMedir) {
+    const {
+        fazenda, talhao, area, cultura, responsavel, dataHora,
+        estadio, texto, proximaAcao,
+        mostrarData, mostrarStars, mostrarResp
+    } = dados;
+
+    const pad = Math.round(W * 0.06);
+    const fFazenda = Math.round(W * 0.082);
+    const fSub     = Math.round(W * 0.042);
+    const fBody    = Math.round(W * 0.042);
+    const fSmall   = Math.round(W * 0.034);
+    const fCred    = Math.round(W * 0.026);
+
+    const lineY = H + Math.round(W * 0.03);
+    let y = lineY + Math.round(W * 0.07);
+
+    ctx.textBaseline = 'alphabetic';
+
+    if (!modoMedir) {
+        ctx.strokeStyle = '#c8941a';
+        ctx.lineWidth = Math.round(W * 0.004);
+        ctx.beginPath();
+        ctx.moveTo(pad, lineY);
+        ctx.lineTo(W - pad, lineY);
+        ctx.stroke();
+    }
+
+    linha(ctx, fazenda.toUpperCase(), pad, y, `700 ${fFazenda}px Bebas Neue, serif`, '#c8941a', modoMedir);
+    y += fFazenda * 1.2;
+
+    if (talhao || area) {
+        const sub = [talhao, area ? area + ' ha' : ''].filter(Boolean).join('   ·   ');
+        linha(ctx, sub.toUpperCase(), pad, y, `600 ${fSub}px sans-serif`, '#9ab89a', modoMedir);
+        y += fSub * 1.6;
+    }
+
+    if (estadio) {
+        linha(ctx, '📍 ' + estadio.toUpperCase(), pad, y, `500 ${fSmall}px sans-serif`, '#6b9b6e', modoMedir);
+        y += fSmall * 1.8;
+    }
+
+    if (mostrarData && dataHora) {
+        linha(ctx, '🕐 ' + dataHora, pad, y, `400 ${fSmall}px sans-serif`, '#6b806a', modoMedir);
+        y += fSmall * 1.8;
+    }
+
+    if (dados.dataPlantio && dados.diasPlantio !== null) {
+        const diasStr = dados.diasPlantio >= 0
+            ? `🌱 ${dados.diasPlantio} DAP  ·  PLANTIO: ${dados.dataPlantio.split('-').reverse().join('/')}`
+            : `📅 PLANTIO: ${dados.dataPlantio.split('-').reverse().join('/')}`;
+        linha(ctx, diasStr, pad, y, `600 ${fSmall}px sans-serif`, '#7ab87e', modoMedir);
+        y += fSmall * 1.8;
+    }
+
+    if (mostrarStars && avaliacaoStars > 0) {
+        const stars = '⭐'.repeat(avaliacaoStars) + '☆'.repeat(5 - avaliacaoStars);
+        const fStar = Math.round(W * 0.055);
+        linha(ctx, stars, pad, y, `${fStar}px sans-serif`, '#ffffff', modoMedir);
+        y += fStar * 2.0;
+    }
+
+    if (texto) {
+        y += Math.round(W * 0.02);
+        if (!modoMedir) {
+            ctx.strokeStyle = 'rgba(200,148,26,0.25)';
+            ctx.lineWidth = Math.round(W * 0.002);
+            ctx.beginPath();
+            ctx.moveTo(pad, y);
+            ctx.lineTo(W - pad, y);
+            ctx.stroke();
+        }
+        y += Math.round(W * 0.05);
+        ctx.font = `400 ${fBody}px sans-serif`;
+        if (!modoMedir) ctx.fillStyle = '#ccd9cc';
+        y = wrapText(ctx, texto, pad, y, W - pad * 2, fBody * 1.65, modoMedir);
+        y += Math.round(W * 0.025);
+    }
+
+    if (proximaAcao) {
+        y += Math.round(W * 0.015);
+        linha(ctx, '▶  ' + proximaAcao.toUpperCase(), pad, y, `700 ${fSub}px sans-serif`, '#e8b030', modoMedir);
+        y += fSub * 1.9;
+    }
+
+    if (mostrarResp && responsavel) {
+        linha(ctx, 'RESP.: ' + responsavel.toUpperCase(), pad, y, `600 ${fSmall}px sans-serif`, 'rgba(200,148,26,0.6)', modoMedir);
+        y += fSmall * 1.8;
+    }
+
+    y += Math.round(W * 0.01);
+    linha(ctx, 'AGRO NA PALMA DA MÃO · JOÃO DIVINO BARBOSA', pad, y, `400 ${fCred}px sans-serif`, 'rgba(107,128,106,0.5)', modoMedir);
+    y += fCred * 2.5;
+
+    return y;
+}
+
+// ── GERAR IMAGEM ──
+async function processarImagem() {
+    if (!imagemOriginal.src || !imagemOriginal.complete) {
+        showToast('⚠️ Adicione uma foto primeiro!', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btnGerar');
+    const pw  = document.getElementById('progressWrap');
+    btn.disabled = true;
+    pw.classList.add('show');
+
+    await new Promise(r => setTimeout(r, 80));
+    setProgress(15, 'Preparando canvas...');
+    await new Promise(r => setTimeout(r, 80));
+
+    const dados = {
+        fazenda:      document.getElementById('fazenda').value.trim() || 'FAZENDA',
+        talhao:       document.getElementById('talhao').value.trim(),
+        area:         document.getElementById('area').value.trim(),
+        cultura:      culturaAtiva === 'OUTRO' ? (document.getElementById('culturaOutra').value.trim() || 'OUTRO').toUpperCase() : culturaAtiva,
+        responsavel:  document.getElementById('responsavel').value.trim(),
+        dataHora:     document.getElementById('dataHora').value,
+        estadio:      document.getElementById('estadio').value,
+        texto:        document.getElementById('texto').value.trim(),
+        proximaAcao:  document.getElementById('proximaAcao').value.trim(),
+        mostrarData:  document.getElementById('togData').classList.contains('on'),
+        mostrarStars: document.getElementById('togStars').classList.contains('on'),
+        mostrarResp:  document.getElementById('togResp').classList.contains('on'),
+        dataPlantio:  document.getElementById('dataPlantio').value,
+        diasPlantio:  (() => {
+            const v = document.getElementById('dataPlantio').value;
+            if (!v) return null;
+            const p = new Date(v + 'T00:00:00');
+            const h = new Date(); h.setHours(0,0,0,0);
+            return Math.floor((h - p) / 86400000);
+        })(),
+    };
+
+    // Aguardar imagem estar completamente carregada
+    if (!imagemOriginal.complete || imagemOriginal.naturalWidth === 0) {
+        await new Promise((resolve) => {
+            imagemOriginal.onload = resolve;
+            imagemOriginal.onerror = resolve;
+            setTimeout(resolve, 5000);
+        });
+    }
+
+    const W = imagemOriginal.naturalWidth  || imagemOriginal.width;
+    const H = imagemOriginal.naturalHeight || imagemOriginal.height;
+
+    if (!W || !H) {
+        showToast('⚠️ Erro ao carregar a foto. Tente novamente.', 'error');
+        btn.disabled = false;
+        pw.classList.remove('show');
+        return;
+    }
+
+    setProgress(30, 'Medindo altura do conteúdo...');
+    await new Promise(r => setTimeout(r, 60));
+
+    const tmpCanvas = document.createElement('canvas');
+    tmpCanvas.width  = W;
+    tmpCanvas.height = H + 5000;
+    const tmpCtx = tmpCanvas.getContext('2d');
+    const alturaUsada = renderRodape(tmpCtx, W, H, dados, true);
+    const totalHeight = Math.ceil(alturaUsada) + Math.round(W * 0.04);
+
+    setProgress(50, 'Renderizando identidade visual...');
+    await new Promise(r => setTimeout(r, 60));
+
+    const canvas = document.getElementById('canvasMestre');
+    const ctx    = canvas.getContext('2d');
+    canvas.width  = W;
+    canvas.height = totalHeight;
+
+    const grad = ctx.createLinearGradient(0, H, 0, totalHeight);
+    grad.addColorStop(0, '#0d1a0c');
+    grad.addColorStop(1, '#060e05');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, totalHeight);
+
+    ctx.drawImage(imagemOriginal, 0, 0, W, H);
+
+    const overH = Math.round(H * 0.18);
+    const overGrad = ctx.createLinearGradient(0, H - overH, 0, H);
+    overGrad.addColorStop(0, 'rgba(10,17,10,0)');
+    overGrad.addColorStop(1, 'rgba(10,17,10,0.92)');
+    ctx.fillStyle = overGrad;
+    ctx.fillRect(0, H - overH, W, overH);
+
+    setProgress(80, 'Compondo textos...');
+    await new Promise(r => setTimeout(r, 60));
+
+    renderRodape(ctx, W, H, dados, false);
+
+    setProgress(100, 'Salvando...');
+    await new Promise(r => setTimeout(r, 120));
+
+    let dataURL;
+    try {
+        dataURL = canvas.toDataURL('image/png', 1.0);
+    } catch(taintedErr) {
+        // Canvas tainted: redesenhar com createImageBitmap
+        try {
+            const bmp = await createImageBitmap(imagemOriginal);
+            ctx.clearRect(0, 0, W, totalHeight);
+            const gradFix = ctx.createLinearGradient(0, H, 0, totalHeight);
+            gradFix.addColorStop(0, '#0d1a0c');
+            gradFix.addColorStop(1, '#060e05');
+            ctx.fillStyle = gradFix;
+            ctx.fillRect(0, 0, W, totalHeight);
+            ctx.drawImage(bmp, 0, 0, W, H);
+            const overHFix = Math.round(H * 0.18);
+            const overGradFix = ctx.createLinearGradient(0, H - overHFix, 0, H);
+            overGradFix.addColorStop(0, 'rgba(10,17,10,0)');
+            overGradFix.addColorStop(1, 'rgba(10,17,10,0.92)');
+            ctx.fillStyle = overGradFix;
+            ctx.fillRect(0, H - overHFix, W, overHFix);
+            renderRodape(ctx, W, H, dados, false);
+            dataURL = canvas.toDataURL('image/png', 1.0);
+        } catch(e2) {
+            showToast('⚠️ Não foi possível exportar. Tente outra foto.', 'error');
+            btn.disabled = false;
+            pw.classList.remove('show');
+            return;
+        }
+    }
+
+    const link = document.createElement('a');
+    link.download = `AgroHD_${Date.now()}.png`;
+    link.href = dataURL;
+    link.click();
+
+    try {
+        const res = await fetch(dataURL);
+        ultimaImagemBlob = await res.blob();
+        if (ultimaImagemURL) URL.revokeObjectURL(ultimaImagemURL);
+        ultimaImagemURL = URL.createObjectURL(ultimaImagemBlob);
+    } catch(e) {
+        ultimaImagemBlob = null;
+        ultimaImagemURL = dataURL;
+    }
+
+    ultimaDados = dados;
+    pw.classList.remove('show');
+    setProgress(0, '');
+    btn.disabled = false;
+    document.getElementById('shareRow').style.display = 'flex';
+    showToast('✅ Imagem salva! Pronta para compartilhar.');
+}
+
+// ── WHATSAPP ──
+function montarTextoWhatsApp() {
+    if (!ultimaDados) return '';
+    const d = ultimaDados;
+    const cultura = d.cultura || '';
+    const linhas = [];
+    linhas.push('🌾 *REGISTRO TÉCNICO DE CAMPO*');
+    linhas.push('━━━━━━━━━━━━━━━━━━━━━━');
+    if (d.fazenda)  linhas.push('📍 *' + d.fazenda.toUpperCase() + '*');
+    const sub = [d.talhao, d.area ? d.area + ' ha' : ''].filter(Boolean).join(' · ');
+    if (sub)        linhas.push('🗂 ' + sub);
+    if (cultura)    linhas.push('🌱 Cultura: *' + cultura + '*');
+    if (d.estadio)  linhas.push('📊 ' + d.estadio);
+    if (d.dataPlantio && d.diasPlantio !== null) {
+        const dp = d.dataPlantio.split('-').reverse().join('/');
+        if (d.diasPlantio >= 0) {
+            linhas.push(`🌱 *${d.diasPlantio} DAP* — Plantio: ${dp}  ${faseGerminacao(d.diasPlantio)}`);
+        } else {
+            linhas.push(`📅 Plantio programado: ${dp}`);
+        }
+    }
+    if (d.mostrarData && d.dataHora) linhas.push('🕐 ' + d.dataHora);
+    if (d.mostrarStars && avaliacaoStars > 0) linhas.push('⭐'.repeat(avaliacaoStars));
+    if (d.texto) {
+        linhas.push('━━━━━━━━━━━━━━━━━━━━━━');
+        linhas.push('📝 ' + d.texto);
+    }
+    if (d.proximaAcao) {
+        linhas.push('━━━━━━━━━━━━━━━━━━━━━━');
+        linhas.push('▶ *Próxima ação:* ' + d.proximaAcao);
+    }
+    if (d.mostrarResp && d.responsavel) linhas.push('👤 Resp.: ' + d.responsavel);
+    linhas.push('━━━━━━━━━━━━━━━━━━━━━━');
+    linhas.push('_Agro na Palma da Mão_');
+    return linhas.join('\n');
+}
+
+async function compartilharWhatsApp() {
+    if (!ultimaImagemURL && !ultimaImagemBlob) {
+        showToast('⚠️ Gere a imagem primeiro!', 'error');
+        return;
+    }
+
+    const textoRelatorio = montarTextoWhatsApp();
+
+    if (navigator.share && ultimaImagemBlob) {
+        try {
+            const file = new File([ultimaImagemBlob], 'AgroRegistro.png', { type: 'image/png' });
+            const podeFicheiro = navigator.canShare && navigator.canShare({ files: [file] });
+            if (podeFicheiro) {
+                await navigator.share({ files: [file], text: textoRelatorio });
+                return;
+            }
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+        }
+    }
+
+    const link2 = document.createElement('a');
+    link2.download = 'AgroRegistro.png';
+    link2.href = ultimaImagemURL;
+    link2.click();
+
+    setTimeout(() => {
+        const url = 'https://wa.me/?text=' + encodeURIComponent(textoRelatorio);
+        window.open(url, '_blank');
+        showToast('📲 Foto salva! Anexe no WhatsApp que abriu.', 'ok');
+    }, 800);
+}
+
+// ── SALVAR DE NOVO ──
+function salvarNovamente() {
+    if (!ultimaImagemURL) return;
+    const link = document.createElement('a');
+    link.download = `AgroHD_${Date.now()}.png`;
+    link.href = ultimaImagemURL;
+    link.click();
+    showToast('💾 Imagem salva novamente!');
+}
+
+// ── ROUNDED RECT ──
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
+</script>
+</body>
+</html>
