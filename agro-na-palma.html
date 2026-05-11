@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agro na Palma da Mão</title>
+    <meta name="theme-color" content="#0d1a07">
+    <meta name="description" content="Registro técnico de campo agrícola">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Agro Campo">
+    <link rel="apple-touch-icon" id="apple-icon">
+    <style>
+        :root { --bg: #0d1a07; --card: #162611; --accent: #4caf50; }
+        body { background: var(--bg); color: #e0e0e0; font-family: sans-serif; padding: 10px; margin: 0; }
+        .container { max-width: 500px; margin: auto; background: var(--card); padding: 15px; border-radius: 15px; border: 1px solid #2d4d24; }
+        .header { text-align: center; border-bottom: 2px solid var(--accent); margin-bottom: 15px; padding-bottom: 10px; }
+        label { color: var(--accent); font-weight: bold; display: block; margin-bottom: 5px; }
+        input, textarea, select { width: 100%; padding: 12px; margin-bottom: 15px; background: #000; border: 1px solid #2d4d24; color: #fff; border-radius: 10px; box-sizing: border-box; }
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .slot { aspect-ratio: 1/1; background: #000; border: 1px dashed var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; }
+        .slot img { width: 100%; height: 100%; object-fit: cover; }
+        .btn { width: 100%; padding: 18px; background: #25d366; color: #0d1a07; border: none; border-radius: 12px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
+        #install-btn { display: none; width: 100%; padding: 12px; background: var(--accent); color: #0d1a07; border: none; border-radius: 12px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"><h2>🌾 Registro de Campo</h2></div>
+        <button id="install-btn">📲 Instalar App</button>
+        <label>📍 Fazenda:</label><input type="text" id="faze" value="Rio da Vida">
+        <label>📂 Área (ha):</label><input type="text" id="area" value="Sede · 250 ha">
+        <label>🌱 Cultura:</label><input type="text" id="cult" value="SOJA">
+        <label>📅 Plantio:</label><input type="date" id="dataP" value="2026-02-07">
+        <label>🌤️ Clima:</label>
+        <select id="clim">
+            <option>☀️ Ensolarado</option>
+            <option selected>☁️ Nublado</option>
+            <option>🌧️ Chovendo</option>
+        </select>
+        <label>📝 Observações:</label><textarea id="obs" rows="4">Cultivar galo vip3 com ótima adaptação...</textarea>
+        <div class="photo-grid">
+            <div class="slot" onclick="document.getElementById('i1').click()" id="p1">+</div>
+            <div class="slot" onclick="document.getElementById('i2').click()" id="p2">+</div>
+            <div class="slot" onclick="document.getElementById('i3').click()" id="p3">+</div>
+        </div>
+        <input type="file" id="i1" accept="image/*" capture="camera" hidden onchange="pv(this,'p1')">
+        <input type="file" id="i2" accept="image/*" capture="camera" hidden onchange="pv(this,'p2')">
+        <input type="file" id="i3" accept="image/*" capture="camera" hidden onchange="pv(this,'p3')">
+        <button class="btn" onclick="enviar()">📤 COMPARTILHAR WHATSAPP</button>
+    </div>
+
+    <script>
+        // ── Ícone SVG inline gerado como data URL ──────────────────────────
+        const ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+          <rect width="192" height="192" rx="32" fill="#0d1a07"/>
+          <text x="96" y="130" font-size="110" text-anchor="middle">🌾</text>
+        </svg>`;
+        const ICON_URL = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(ICON_SVG)));
+
+        // Aplica ícone apple-touch-icon
+        document.getElementById('apple-icon').href = ICON_URL;
+
+        // ── Manifest dinâmico injetado via Blob ───────────────────────────
+        const manifest = {
+            name: "Agro na Palma da Mão",
+            short_name: "Agro Campo",
+            description: "Registro técnico de campo agrícola",
+            start_url: "./",
+            display: "standalone",
+            background_color: "#0d1a07",
+            theme_color: "#0d1a07",
+            orientation: "portrait",
+            icons: [
+                { src: ICON_URL, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" },
+                { src: ICON_URL, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+            ]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = manifestURL;
+        document.head.appendChild(link);
+
+        // ── Service Worker inline via Blob ────────────────────────────────
+        const SW_CODE = `
+const CACHE = 'agro-campo-v1';
+self.addEventListener('install', e => {
+    self.skipWaiting();
+    e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/'])));
+});
+self.addEventListener('activate', e => {
+    e.waitUntil(clients.claim());
+});
+self.addEventListener('fetch', e => {
+    e.respondWith(
+        caches.match(e.request).then(r => r || fetch(e.request).catch(() => r))
+    );
+});`;
+        if ('serviceWorker' in navigator) {
+            const swBlob = new Blob([SW_CODE], { type: 'application/javascript' });
+            const swURL = URL.createObjectURL(swBlob);
+            navigator.serviceWorker.register(swURL).catch(() => {});
+        }
+
+        // ── Prompt de instalação ──────────────────────────────────────────
+        let deferredPrompt;
+        const installBtn = document.getElementById('install-btn');
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'block';
+        });
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') installBtn.style.display = 'none';
+            deferredPrompt = null;
+        });
+        window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
+
+        // ── Funções do app ────────────────────────────────────────────────
+        function pv(i, s) {
+            if (i.files[0]) {
+                let r = new FileReader();
+                r.onload = e => document.getElementById(s).innerHTML = `<img src="${e.target.result}">`;
+                r.readAsDataURL(i.files[0]);
+            }
+        }
+
+        async function enviar() {
+            let dp = document.getElementById('dataP').value;
+            let dap = Math.floor((new Date() - new Date(dp)) / 86400000);
+            let txt = `🌾 *REGISTRO TÉCNICO DE CAMPO*\n_________________________________\n\n📍 *FAZENDA:* ${document.getElementById('faze').value.toUpperCase()}\n📂 ${document.getElementById('area').value}\n🌱 ${document.getElementById('cult').value}\n🌱 ${dap} DAP — Plantio: ${dp.split('-').reverse().join('/')}\n🌤️ Clima: ${document.getElementById('clim').value}\n⭐⭐⭐⭐⭐\n_________________________________\n\n📝 ${document.getElementById('obs').value}\n_________________________________\n\n_Agro na Palma da Mão_`;
+            let files = [document.getElementById('i1').files[0], document.getElementById('i2').files[0], document.getElementById('i3').files[0]].filter(f => f);
+            if (navigator.share) {
+                await navigator.share({ text: txt, files: files }).catch(() => window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(txt)));
+            } else {
+                window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(txt));
+            }
+        }
+    </script>
+</body>
+</html>
